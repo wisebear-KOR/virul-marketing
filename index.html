@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>2026년 남은 운 뽑기</title>
+  <meta property="og:title" content="2026년 남은 운 뽑기">
+  <meta property="og:description" content="내 이름으로 2026년 남은 행운을 확인해보세요!">
+  <meta property="og:type" content="website">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      overflow-x: hidden;
+    }
+
+    #app {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 20px 40px;
+      position: relative;
+    }
+
+    #app:has(#result-screen.active) {
+      justify-content: flex-start;
+      padding-top: 40px;
+    }
+
+    /* Particles */
+    .particle {
+      position: fixed;
+      font-size: 20px;
+      pointer-events: none;
+      z-index: 0;
+      animation: floatUp linear infinite;
+      opacity: 0.6;
+    }
+
+    @keyframes floatUp {
+      0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+      10% { opacity: 0.6; }
+      90% { opacity: 0.6; }
+      100% { transform: translateY(-10vh) rotate(360deg); opacity: 0; }
+    }
+
+    /* Screens */
+    .screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 480px;
+      z-index: 1;
+    }
+
+    .screen.active {
+      display: flex;
+    }
+
+    /* Intro Screen */
+    .title {
+      font-size: 2.2rem;
+      font-weight: 800;
+      text-align: center;
+      margin-bottom: 12px;
+      background: linear-gradient(to right, #fff, #ffd700, #fff);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmer 3s linear infinite;
+    }
+
+    @keyframes shimmer {
+      0% { background-position: -200% center; }
+      100% { background-position: 200% center; }
+    }
+
+    .subtitle {
+      font-size: 1rem;
+      opacity: 0.85;
+      text-align: center;
+      margin-bottom: 40px;
+      line-height: 1.5;
+    }
+
+    .input-group {
+      width: 100%;
+      margin-bottom: 16px;
+    }
+
+    .text-input {
+      width: 100%;
+      padding: 16px 20px;
+      font-size: 1.1rem;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(10px);
+      color: #fff;
+      text-align: center;
+      outline: none;
+      transition: border-color 0.3s, background 0.3s;
+      font-family: inherit;
+    }
+
+    .text-input::placeholder { color: rgba(255,255,255,0.5); }
+    .text-input:focus {
+      border-color: rgba(255,255,255,0.6);
+      background: rgba(255,255,255,0.25);
+    }
+
+    .input-label {
+      font-size: 0.85rem;
+      opacity: 0.7;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    .birthday-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .birthday-row .text-input {
+      flex: 1;
+      padding: 14px 8px;
+      font-size: 1rem;
+    }
+
+    .birthday-row .text-input.year { flex: 1.3; }
+
+    .draw-btn {
+      width: 100%;
+      padding: 18px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      color: #fff;
+      cursor: pointer;
+      font-family: inherit;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 20px rgba(240, 147, 251, 0.4);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .draw-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 25px rgba(240, 147, 251, 0.6);
+    }
+
+    .draw-btn:active { transform: translateY(0); }
+
+    .draw-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      animation: none;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+    }
+
+    /* Drawing Screen */
+    #drawing-screen {
+      justify-content: center;
+      min-height: 60vh;
+    }
+
+    .envelope-container {
+      position: relative;
+      width: 160px;
+      height: 180px;
+      margin-bottom: 30px;
+    }
+
+    .envelope {
+      width: 160px;
+      height: 140px;
+      background: linear-gradient(135deg, #f5576c, #f093fb);
+      border-radius: 20px;
+      position: relative;
+      animation: envelopeAppear 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+    }
+
+    .envelope::before {
+      content: '';
+      position: absolute;
+      top: -30px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 80px solid transparent;
+      border-right: 80px solid transparent;
+      border-bottom: 40px solid #e8447a;
+      border-radius: 4px;
+      animation: flapOpen 0.5s ease 1s forwards;
+      transform-origin: bottom center;
+    }
+
+    @keyframes envelopeAppear {
+      0% { transform: scale(0) rotate(-10deg); opacity: 0; }
+      100% { transform: scale(1) rotate(0deg); opacity: 1; }
+    }
+
+    @keyframes flapOpen {
+      0% { transform: translateX(-50%) rotateX(0deg); }
+      100% { transform: translateX(-50%) rotateX(180deg); opacity: 0.3; }
+    }
+
+    .drawing-text {
+      font-size: 1.1rem;
+      font-weight: 600;
+      animation: fadeInOut 0.5s ease;
+    }
+
+    @keyframes fadeInOut {
+      0% { opacity: 0; transform: translateY(5px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Sparkles */
+    .sparkle {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ffd700;
+      pointer-events: none;
+    }
+
+    @keyframes sparkle-burst {
+      0% { transform: translate(0, 0) scale(1); opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    /* Result Screen */
+    .shared-banner {
+      width: 100%;
+      padding: 14px;
+      background: rgba(255,255,255,0.2);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      text-align: center;
+      margin-bottom: 20px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.3s;
+      border: 1px solid rgba(255,255,255,0.3);
+    }
+
+    .shared-banner:hover { background: rgba(255,255,255,0.3); }
+
+    .result-header {
+      text-align: center;
+      margin-bottom: 24px;
+      animation: slideDown 0.5s ease;
+    }
+
+    @keyframes slideDown {
+      0% { opacity: 0; transform: translateY(-20px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-name {
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .result-grade {
+      display: inline-block;
+      font-size: 2.5rem;
+      font-weight: 800;
+      padding: 8px 24px;
+      background: rgba(255,255,255,0.2);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      border: 2px solid rgba(255,255,255,0.3);
+      margin-top: 8px;
+    }
+
+    .grade-label {
+      font-size: 0.85rem;
+      opacity: 0.8;
+      margin-top: 6px;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      width: 100%;
+      margin-bottom: 24px;
+    }
+
+    .luck-card {
+      background: rgba(255,255,255,0.12);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.2);
+      padding: 16px;
+      opacity: 0;
+      transform: translateY(20px);
+      animation: cardAppear 0.4s ease forwards;
+    }
+
+    @keyframes cardAppear {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card-emoji {
+      font-size: 1.8rem;
+      margin-bottom: 6px;
+    }
+
+    .card-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      opacity: 0.8;
+      margin-bottom: 8px;
+    }
+
+    .score-bar {
+      width: 100%;
+      height: 8px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    .score-fill {
+      height: 100%;
+      border-radius: 4px;
+      width: 0%;
+      transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .score-fill.love { background: linear-gradient(90deg, #f093fb, #f5576c); }
+    .score-fill.money { background: linear-gradient(90deg, #ffd700, #ff9a00); }
+    .score-fill.health { background: linear-gradient(90deg, #43e97b, #38f9d7); }
+    .score-fill.career { background: linear-gradient(90deg, #667eea, #4facfe); }
+    .score-fill.social { background: linear-gradient(90deg, #fa709a, #fee140); }
+    .score-fill.item { background: linear-gradient(90deg, #a18cd1, #fbc2eb); }
+
+    .card-score {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .card-desc {
+      font-size: 0.8rem;
+      opacity: 0.85;
+      line-height: 1.4;
+    }
+
+    /* Lucky Item card special */
+    .luck-card.item-card .card-score {
+      font-size: 0.95rem;
+    }
+
+    /* Buttons */
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .share-btn, .retry-btn {
+      flex: 1;
+      padding: 16px;
+      font-size: 1rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 16px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .share-btn {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(240, 147, 251, 0.4);
+    }
+
+    .retry-btn {
+      background: rgba(255,255,255,0.2);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.3);
+      backdrop-filter: blur(10px);
+    }
+
+    .share-btn:hover, .retry-btn:hover { transform: translateY(-2px); }
+    .share-btn:active, .retry-btn:active { transform: translateY(0); }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: rgba(0,0,0,0.85);
+      color: #fff;
+      padding: 14px 28px;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      z-index: 100;
+      transition: transform 0.3s ease;
+      backdrop-filter: blur(10px);
+    }
+
+    #toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* Fade transition helper */
+    .fade-out {
+      animation: fadeOut 0.3s ease forwards;
+    }
+
+    @keyframes fadeOut {
+      to { opacity: 0; transform: translateY(-10px); }
+    }
+
+    .fade-in {
+      animation: fadeIn 0.3s ease forwards;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Footer */
+    .footer {
+      margin-top: 24px;
+      font-size: 0.75rem;
+      opacity: 0.5;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="particles"></div>
+
+    <!-- Screen 1: Intro -->
+    <section id="intro-screen" class="screen active">
+      <div class="title">2026년 남은 운 뽑기</div>
+      <div class="subtitle">이름과 생년월일을 입력하고<br>남은 행운을 확인하세요!</div>
+      <div class="input-group">
+        <input type="text" id="name-input" class="text-input" placeholder="이름을 입력하세요" maxlength="20" autocomplete="off">
+      </div>
+      <div class="input-group">
+        <div class="input-label">생년월일</div>
+        <div class="birthday-row">
+          <input type="text" id="birth-year" class="text-input year" placeholder="년(YYYY)" maxlength="4" inputmode="numeric" autocomplete="off">
+          <input type="text" id="birth-month" class="text-input" placeholder="월(MM)" maxlength="2" inputmode="numeric" autocomplete="off">
+          <input type="text" id="birth-day" class="text-input" placeholder="일(DD)" maxlength="2" inputmode="numeric" autocomplete="off">
+        </div>
+      </div>
+      <button id="draw-btn" class="draw-btn" disabled>운 뽑기!</button>
+    </section>
+
+    <!-- Screen 2: Drawing Animation -->
+    <section id="drawing-screen" class="screen">
+      <div class="envelope-container" id="envelope-container">
+        <div class="envelope">🧧</div>
+      </div>
+      <div class="drawing-text" id="drawing-text">운명을 읽는 중...</div>
+    </section>
+
+    <!-- Screen 3: Results -->
+    <section id="result-screen" class="screen">
+      <div class="shared-banner" id="shared-banner" style="display:none;">
+        ✨ 나도 내 운세 뽑아보기! ✨
+      </div>
+      <div class="result-header">
+        <div class="result-name" id="result-name"></div>
+        <div class="grade-label">종합 운세 등급</div>
+        <div class="result-grade" id="result-grade"></div>
+      </div>
+      <div class="cards-grid" id="cards-grid"></div>
+      <div class="btn-group">
+        <button class="share-btn" id="share-btn">🔗 링크 복사하기</button>
+        <button class="retry-btn" id="retry-btn">🔄 다시 뽑기</button>
+      </div>
+      <div class="footer">2026년 남은 운 뽑기</div>
+    </section>
+
+    <div id="toast"></div>
+  </div>
+
+  <script>
+    // ============ Constants ============
+    const CATEGORIES = [
+      { key: 'love', name: '연애운', emoji: '❤️', colorClass: 'love' },
+      { key: 'money', name: '금전운', emoji: '💰', colorClass: 'money' },
+      { key: 'health', name: '건강운', emoji: '🍀', colorClass: 'health' },
+      { key: 'career', name: '직장운', emoji: '💼', colorClass: 'career' },
+      { key: 'social', name: '인간관계운', emoji: '🤝', colorClass: 'social' },
+    ];
+
+    const DESCRIPTIONS = {
+      love: [
+        "설레는 만남이 기다리고 있어요",
+        "소중한 인연이 더 깊어질 거예요",
+        "뜻밖의 고백을 받을 수 있어요",
+        "사랑하는 사람과 행복한 시간이 가득해요",
+        "새로운 인연이 찾아올 조짐이에요",
+        "연인과의 관계가 한층 성숙해져요",
+        "마음을 열면 좋은 사람이 나타나요",
+        "로맨틱한 순간들이 펼쳐질 거예요"
+      ],
+      money: [
+        "예상치 못한 수입이 들어와요",
+        "투자 운이 상승하는 시기예요",
+        "알뜰한 소비가 큰 결실을 맺어요",
+        "금전적으로 안정되는 시기가 와요",
+        "뜻밖의 보너스가 찾아올 수 있어요",
+        "재테크에 관심을 가지면 좋은 결과가",
+        "주변에서 좋은 재정 조언을 받아요",
+        "절약이 미래의 큰 자산이 됩니다"
+      ],
+      health: [
+        "활력이 넘치는 시기가 와요",
+        "새로운 운동을 시작하면 효과 만점",
+        "건강 관리에 좋은 습관이 자리잡아요",
+        "체력이 쑥쑥 올라가는 시기예요",
+        "마음의 평화가 몸의 건강을 가져와요",
+        "규칙적인 생활이 빛을 발해요",
+        "건강 검진에서 좋은 소식이 있어요",
+        "에너지가 넘치는 하루하루가 될 거예요"
+      ],
+      career: [
+        "승진이나 좋은 기회가 찾아와요",
+        "새 프로젝트에서 빛나는 활약을 해요",
+        "상사에게 인정받는 일이 생겨요",
+        "커리어 전환의 좋은 타이밍이에요",
+        "동료와의 협업에서 좋은 성과를 내요",
+        "숨겨진 재능이 발휘되는 시기예요",
+        "업무 효율이 크게 올라가요",
+        "중요한 성과를 달성하게 될 거예요"
+      ],
+      social: [
+        "오래된 친구와 재회할 기회가 와요",
+        "새로운 인맥이 큰 도움이 되어요",
+        "주변 사람들에게 사랑받는 시기예요",
+        "소통 능력이 빛을 발하는 때예요",
+        "뜻밖의 곳에서 귀인을 만나요",
+        "모임에서 인기 만점이 될 거예요",
+        "주변 사람들과의 관계가 돈독해져요",
+        "좋은 사람들이 자연스레 모여들어요"
+      ]
+    };
+
+    const LUCKY_ITEMS = [
+      "노란색 양말", "아메리카노", "고양이 사진", "파란 볼펜",
+      "민트초코", "빨간 머플러", "사과 한 조각", "작은 화분",
+      "스티커 한 장", "보라색 우산", "초콜릿", "레몬 사탕",
+      "하늘색 텀블러", "손편지", "무지개 열쇠고리", "별 모양 쿠키",
+      "라벤더 향초", "네잎클로버", "금색 동전", "분홍 머리끈"
+    ];
+
+    const DRAWING_TEXTS = [
+      "운명을 읽는 중...",
+      "별자리 분석 중...",
+      "행운 계산 중...",
+      "결과 정리 중..."
+    ];
+
+    // ============ Hash & PRNG ============
+    function hashName(name) {
+      let hash = 5381;
+      for (let i = 0; i < name.length; i++) {
+        hash = ((hash << 5) + hash) + name.charCodeAt(i);
+        hash = hash & hash;
+      }
+      return Math.abs(hash);
+    }
+
+    function seededRandom(seed) {
+      return function() {
+        seed |= 0;
+        seed = seed + 0x6D2B79F5 | 0;
+        let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      };
+    }
+
+    function generateLuck(name, birthday) {
+      const rng = seededRandom(hashName(name + (birthday || '')));
+      const results = [];
+      let totalScore = 0;
+
+      for (const cat of CATEGORIES) {
+        const score = Math.floor(rng() * 40) + 60;
+        const descIndex = Math.floor(rng() * DESCRIPTIONS[cat.key].length);
+        totalScore += score;
+        results.push({
+          ...cat,
+          score,
+          description: DESCRIPTIONS[cat.key][descIndex]
+        });
+      }
+
+      const luckyItemIndex = Math.floor(rng() * LUCKY_ITEMS.length);
+      results.push({
+        key: 'item',
+        name: '행운 아이템',
+        emoji: '⭐',
+        colorClass: 'item',
+        score: null,
+        description: LUCKY_ITEMS[luckyItemIndex]
+      });
+
+      const avg = totalScore / CATEGORIES.length;
+      let grade;
+      if (avg >= 90) grade = 'S';
+      else if (avg >= 80) grade = 'A+';
+      else if (avg >= 70) grade = 'A';
+      else grade = 'B+';
+
+      return { results, grade, avgScore: Math.round(avg) };
+    }
+
+    // ============ DOM Helpers ============
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => document.querySelectorAll(sel);
+
+    function showScreen(id) {
+      $$('.screen').forEach(s => s.classList.remove('active'));
+      $(`#${id}`).classList.add('active');
+    }
+
+    function showToast(msg) {
+      const toast = $('#toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+    // ============ Particles ============
+    function createParticles() {
+      const emojis = ['🍀', '⭐', '✨', '🎯', '💫', '🌟'];
+      const container = $('#particles');
+      for (let i = 0; i < 15; i++) {
+        const span = document.createElement('span');
+        span.className = 'particle';
+        span.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+        span.style.left = Math.random() * 100 + 'vw';
+        span.style.animationDuration = (8 + Math.random() * 12) + 's';
+        span.style.animationDelay = (Math.random() * 10) + 's';
+        span.style.fontSize = (16 + Math.random() * 14) + 'px';
+        container.appendChild(span);
+      }
+    }
+
+    // ============ Sparkle Burst ============
+    function createSparkles(container) {
+      for (let i = 0; i < 16; i++) {
+        const sparkle = document.createElement('div');
+        sparkle.className = 'sparkle';
+        const angle = (i / 16) * Math.PI * 2;
+        const distance = 60 + Math.random() * 40;
+        const tx = Math.cos(angle) * distance;
+        const ty = Math.sin(angle) * distance;
+        sparkle.style.left = '50%';
+        sparkle.style.top = '50%';
+        sparkle.style.width = (4 + Math.random() * 6) + 'px';
+        sparkle.style.height = sparkle.style.width;
+        sparkle.style.background = ['#ffd700', '#f093fb', '#43e97b', '#4facfe', '#fff'][Math.floor(Math.random() * 5)];
+        sparkle.style.animation = `sparkle-burst 0.8s ease forwards`;
+        sparkle.animate([
+          { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
+          { transform: `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px)) scale(0)`, opacity: 0 }
+        ], { duration: 800, easing: 'cubic-bezier(0, 0.5, 0.5, 1)', fill: 'forwards' });
+        container.appendChild(sparkle);
+      }
+    }
+
+    // ============ Drawing Animation ============
+    function startDrawing(name, birthday) {
+      showScreen('drawing-screen');
+      const textEl = $('#drawing-text');
+      let textIndex = 0;
+
+      const textInterval = setInterval(() => {
+        textIndex = (textIndex + 1) % DRAWING_TEXTS.length;
+        textEl.textContent = DRAWING_TEXTS[textIndex];
+        textEl.style.animation = 'none';
+        textEl.offsetHeight; // reflow
+        textEl.style.animation = 'fadeInOut 0.5s ease';
+      }, 600);
+
+      setTimeout(() => {
+        createSparkles($('#envelope-container'));
+      }, 1500);
+
+      setTimeout(() => {
+        clearInterval(textInterval);
+        const luck = generateLuck(name, birthday);
+        showResults(name, luck);
+      }, 2500);
+    }
+
+    // ============ Results ============
+    function showResults(name, luck) {
+      showScreen('result-screen');
+
+      $('#result-name').textContent = `${name}님의 2026년 남은 운세`;
+      $('#result-grade').textContent = luck.grade;
+
+      const grid = $('#cards-grid');
+      grid.innerHTML = '';
+
+      luck.results.forEach((item, i) => {
+        const card = document.createElement('div');
+        card.className = `luck-card ${item.key === 'item' ? 'item-card' : ''}`;
+        card.style.animationDelay = `${i * 0.1}s`;
+
+        if (item.score !== null) {
+          card.innerHTML = `
+            <div class="card-emoji">${item.emoji}</div>
+            <div class="card-title">${item.name}</div>
+            <div class="score-bar">
+              <div class="score-fill ${item.colorClass}" id="fill-${item.key}"></div>
+            </div>
+            <div class="card-score">${item.score}점</div>
+            <div class="card-desc">${item.description}</div>
+          `;
+        } else {
+          card.innerHTML = `
+            <div class="card-emoji">${item.emoji}</div>
+            <div class="card-title">${item.name}</div>
+            <div class="card-score">${item.description}</div>
+            <div class="card-desc">이것을 가까이 하면 행운이!</div>
+          `;
+        }
+        grid.appendChild(card);
+      });
+
+      // Animate score bars after render
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          luck.results.forEach(item => {
+            if (item.score !== null) {
+              const fill = $(`#fill-${item.key}`);
+              if (fill) fill.style.width = item.score + '%';
+            }
+          });
+        }, 300);
+      });
+
+      // Check if from shared link
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('name')) {
+        $('#shared-banner').style.display = 'block';
+      }
+    }
+
+    // ============ Sharing ============
+    function copyShareLink(name, birthday) {
+      let url = `${window.location.origin}${window.location.pathname}?name=${encodeURIComponent(name)}`;
+      if (birthday) url += `&birth=${encodeURIComponent(birthday)}`;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(() => {
+          showToast('링크가 복사되었습니다!');
+        }).catch(() => fallbackCopy(url));
+      } else {
+        fallbackCopy(url);
+      }
+    }
+
+    function fallbackCopy(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast('링크가 복사되었습니다!');
+      } catch {
+        showToast('링크 복사에 실패했습니다');
+      }
+      document.body.removeChild(ta);
+    }
+
+    // ============ Init ============
+    let currentName = '';
+    let currentBirthday = '';
+
+    function getBirthday() {
+      const y = $('#birth-year').value.trim();
+      const m = $('#birth-month').value.trim().padStart(2, '0');
+      const d = $('#birth-day').value.trim().padStart(2, '0');
+      if (y && m && d) return `${y}${m}${d}`;
+      return '';
+    }
+
+    function checkFormValid() {
+      const name = $('#name-input').value.trim();
+      const y = $('#birth-year').value.trim();
+      const m = $('#birth-month').value.trim();
+      const d = $('#birth-day').value.trim();
+      $('#draw-btn').disabled = !(name && y.length === 4 && m && d);
+    }
+
+    function init() {
+      createParticles();
+
+      const nameInput = $('#name-input');
+      const drawBtn = $('#draw-btn');
+      const birthInputs = ['#birth-year', '#birth-month', '#birth-day'];
+
+      nameInput.addEventListener('input', checkFormValid);
+      birthInputs.forEach(sel => {
+        $(sel).addEventListener('input', function() {
+          // Auto-advance to next field
+          const maxLen = parseInt(this.maxLength);
+          if (this.value.length >= maxLen) {
+            const idx = birthInputs.indexOf(sel);
+            if (idx < birthInputs.length - 1) {
+              $(birthInputs[idx + 1]).focus();
+            }
+          }
+          checkFormValid();
+        });
+      });
+
+      // Allow Enter on any input
+      document.querySelectorAll('#intro-screen input').forEach(input => {
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && !drawBtn.disabled) {
+            startDraw();
+          }
+        });
+      });
+
+      drawBtn.addEventListener('click', startDraw);
+
+      function startDraw() {
+        currentName = nameInput.value.trim();
+        currentBirthday = getBirthday();
+        if (!currentName) return;
+        startDrawing(currentName, currentBirthday);
+      }
+
+      $('#share-btn').addEventListener('click', () => {
+        copyShareLink(currentName, currentBirthday);
+      });
+
+      $('#retry-btn').addEventListener('click', () => {
+        currentName = '';
+        currentBirthday = '';
+        nameInput.value = '';
+        birthInputs.forEach(sel => $(sel).value = '');
+        drawBtn.disabled = true;
+        const envelope = $('.envelope-container');
+        if (envelope) {
+          envelope.innerHTML = '<div class="envelope">🧧</div>';
+        }
+        showScreen('intro-screen');
+        nameInput.focus();
+      });
+
+      $('#shared-banner').addEventListener('click', () => {
+        window.history.replaceState({}, '', window.location.pathname);
+        currentName = '';
+        currentBirthday = '';
+        nameInput.value = '';
+        birthInputs.forEach(sel => $(sel).value = '');
+        drawBtn.disabled = true;
+        $('#shared-banner').style.display = 'none';
+        showScreen('intro-screen');
+        nameInput.focus();
+      });
+
+      // Check URL params on load
+      const params = new URLSearchParams(window.location.search);
+      const sharedName = params.get('name');
+      const sharedBirth = params.get('birth') || '';
+      if (sharedName) {
+        currentName = sharedName;
+        currentBirthday = sharedBirth;
+        startDrawing(sharedName, sharedBirth);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
