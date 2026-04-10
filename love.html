@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>2026 연애 운세 분석기</title>
+  <meta property="og:title" content="2026 연애 운세 분석기">
+  <meta property="og:description" content="내 연애 매력 지수를 확인해보세요! 💕">
+  <meta property="og:type" content="website">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #ee9ca7 0%, #ffdde1 50%, #e8447a 100%);
+      color: #4a0e2a;
+      overflow-x: hidden;
+    }
+
+    #app {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 20px 40px;
+      position: relative;
+    }
+
+    #app:has(#result-screen.active) {
+      justify-content: flex-start;
+      padding-top: 40px;
+    }
+
+    /* Particles */
+    .particle {
+      position: fixed;
+      font-size: 20px;
+      pointer-events: none;
+      z-index: 0;
+      animation: floatUp linear infinite;
+      opacity: 0.6;
+    }
+
+    @keyframes floatUp {
+      0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+      10% { opacity: 0.6; }
+      90% { opacity: 0.6; }
+      100% { transform: translateY(-10vh) rotate(360deg); opacity: 0; }
+    }
+
+    /* Screens */
+    .screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 480px;
+      z-index: 1;
+    }
+
+    .screen.active {
+      display: flex;
+    }
+
+    /* Intro Screen */
+    .title {
+      font-size: 2.2rem;
+      font-weight: 800;
+      text-align: center;
+      margin-bottom: 12px;
+      background: linear-gradient(to right, #fff, #ffb6c1, #fff);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmer 3s linear infinite;
+      filter: drop-shadow(0 2px 4px rgba(100, 0, 30, 0.3));
+    }
+
+    @keyframes shimmer {
+      0% { background-position: -200% center; }
+      100% { background-position: 200% center; }
+    }
+
+    .subtitle {
+      font-size: 1rem;
+      color: #fff;
+      text-shadow: 0 1px 3px rgba(150, 0, 50, 0.4);
+      text-align: center;
+      margin-bottom: 40px;
+      line-height: 1.5;
+    }
+
+    .input-group {
+      width: 100%;
+      margin-bottom: 16px;
+    }
+
+    .text-input {
+      width: 100%;
+      padding: 16px 20px;
+      font-size: 1.1rem;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.25);
+      backdrop-filter: blur(10px);
+      color: #4a0e2a;
+      text-align: center;
+      outline: none;
+      transition: border-color 0.3s, background 0.3s;
+      font-family: inherit;
+    }
+
+    .text-input::placeholder { color: rgba(100, 20, 50, 0.45); }
+    .text-input:focus {
+      border-color: rgba(255,255,255,0.7);
+      background: rgba(255,255,255,0.4);
+    }
+
+    .input-label {
+      font-size: 0.85rem;
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(150, 0, 50, 0.3);
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    .birthday-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .birthday-row .text-input {
+      flex: 1;
+      padding: 14px 8px;
+      font-size: 1rem;
+    }
+
+    .birthday-row .text-input.year { flex: 1.3; }
+
+    .draw-btn {
+      width: 100%;
+      padding: 18px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #c0392b 0%, #e84393 100%);
+      color: #fff;
+      cursor: pointer;
+      font-family: inherit;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 20px rgba(200, 50, 80, 0.4);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .draw-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 25px rgba(200, 50, 80, 0.6);
+    }
+
+    .draw-btn:active { transform: translateY(0); }
+
+    .draw-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      animation: none;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+    }
+
+    /* Drawing Screen */
+    #drawing-screen {
+      justify-content: center;
+      min-height: 60vh;
+    }
+
+    .heart-container {
+      position: relative;
+      width: 160px;
+      height: 160px;
+      margin-bottom: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .heart {
+      font-size: 6rem;
+      animation: heartBeat 0.6s ease-in-out infinite alternate, heartAppear 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      filter: drop-shadow(0 5px 20px rgba(200, 0, 50, 0.5));
+    }
+
+    @keyframes heartAppear {
+      0% { transform: scale(0) rotate(-15deg); opacity: 0; }
+      100% { transform: scale(1) rotate(0deg); opacity: 1; }
+    }
+
+    @keyframes heartBeat {
+      0% { transform: scale(1); }
+      100% { transform: scale(1.15); }
+    }
+
+    .heart.open {
+      animation: heartOpen 0.8s ease forwards;
+    }
+
+    @keyframes heartOpen {
+      0% { transform: scale(1); }
+      30% { transform: scale(1.3); }
+      60% { transform: scale(1.3); filter: drop-shadow(0 5px 40px rgba(255, 100, 150, 0.8)); }
+      100% { transform: scale(1.5); opacity: 0.3; filter: drop-shadow(0 5px 60px rgba(255, 100, 150, 1)); }
+    }
+
+    .drawing-text {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #fff;
+      text-shadow: 0 1px 4px rgba(150, 0, 50, 0.5);
+      animation: fadeInOut 0.5s ease;
+    }
+
+    @keyframes fadeInOut {
+      0% { opacity: 0; transform: translateY(5px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Sparkles */
+    .sparkle {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ff6b9d;
+      pointer-events: none;
+    }
+
+    /* Result Screen */
+    .shared-banner {
+      width: 100%;
+      padding: 14px;
+      background: rgba(255,255,255,0.3);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      text-align: center;
+      margin-bottom: 20px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.3s;
+      border: 1px solid rgba(255,255,255,0.4);
+      color: #4a0e2a;
+    }
+
+    .shared-banner:hover { background: rgba(255,255,255,0.45); }
+
+    .result-header {
+      text-align: center;
+      margin-bottom: 24px;
+      animation: slideDown 0.5s ease;
+    }
+
+    @keyframes slideDown {
+      0% { opacity: 0; transform: translateY(-20px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-name {
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #fff;
+      text-shadow: 0 1px 4px rgba(150, 0, 50, 0.4);
+    }
+
+    .charm-index {
+      font-size: 4rem;
+      font-weight: 900;
+      color: #fff;
+      text-shadow: 0 3px 10px rgba(200, 0, 50, 0.5);
+      margin: 8px 0;
+    }
+
+    .charm-label {
+      font-size: 0.9rem;
+      color: #fff;
+      text-shadow: 0 1px 3px rgba(150, 0, 50, 0.3);
+      margin-bottom: 4px;
+    }
+
+    .result-grade {
+      display: inline-block;
+      font-size: 1.5rem;
+      font-weight: 800;
+      padding: 8px 24px;
+      background: rgba(255,255,255,0.25);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      border: 2px solid rgba(255,255,255,0.4);
+      margin-top: 8px;
+      color: #8b0040;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      width: 100%;
+      margin-bottom: 24px;
+    }
+
+    .luck-card {
+      background: rgba(255,255,255,0.2);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.3);
+      padding: 16px;
+      opacity: 0;
+      transform: translateY(20px);
+      animation: cardAppear 0.4s ease forwards;
+    }
+
+    @keyframes cardAppear {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card-emoji {
+      font-size: 1.8rem;
+      margin-bottom: 6px;
+    }
+
+    .card-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #8b0040;
+      margin-bottom: 8px;
+    }
+
+    .score-bar {
+      width: 100%;
+      height: 8px;
+      background: rgba(255,255,255,0.25);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    .score-fill {
+      height: 100%;
+      border-radius: 4px;
+      width: 0%;
+      transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .score-fill.first-impression { background: linear-gradient(90deg, #ff6b9d, #c0392b); }
+    .score-fill.conversation { background: linear-gradient(90deg, #e84393, #fd79a8); }
+    .score-fill.flutter { background: linear-gradient(90deg, #ff6348, #ff4757); }
+
+    .card-score {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #4a0e2a;
+      margin-bottom: 4px;
+    }
+
+    .card-desc {
+      font-size: 0.8rem;
+      color: #6b1a3a;
+      line-height: 1.4;
+    }
+
+    .luck-card.wide-card {
+      grid-column: 1 / -1;
+    }
+
+    .luck-card.wide-card .card-score {
+      font-size: 0.95rem;
+    }
+
+    .keywords-list {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    .keyword-tag {
+      background: rgba(200, 50, 80, 0.2);
+      border: 1px solid rgba(200, 50, 80, 0.3);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #8b0040;
+    }
+
+    /* Buttons */
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .share-btn, .retry-btn {
+      flex: 1;
+      padding: 16px;
+      font-size: 1rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 16px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .share-btn {
+      background: linear-gradient(135deg, #c0392b 0%, #e84393 100%);
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(200, 50, 80, 0.4);
+    }
+
+    .retry-btn {
+      background: rgba(255,255,255,0.3);
+      color: #4a0e2a;
+      border: 1px solid rgba(255,255,255,0.4);
+      backdrop-filter: blur(10px);
+    }
+
+    .share-btn:hover, .retry-btn:hover { transform: translateY(-2px); }
+    .share-btn:active, .retry-btn:active { transform: translateY(0); }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: rgba(74, 14, 42, 0.9);
+      color: #fff;
+      padding: 14px 28px;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      z-index: 100;
+      transition: transform 0.3s ease;
+      backdrop-filter: blur(10px);
+    }
+
+    #toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* Footer */
+    .footer {
+      margin-top: 24px;
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.6);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="particles"></div>
+
+    <!-- Screen 1: Intro -->
+    <section id="intro-screen" class="screen active">
+      <div class="title">2026 연애 운세 분석기</div>
+      <div class="subtitle">이름과 생년월일을 입력하고<br>나의 연애 매력 지수를 확인하세요!</div>
+      <div class="input-group">
+        <input type="text" id="name-input" class="text-input" placeholder="이름을 입력하세요" maxlength="20" autocomplete="off">
+      </div>
+      <div class="input-group">
+        <div class="input-label">생년월일</div>
+        <div class="birthday-row">
+          <input type="text" id="birth-year" class="text-input year" placeholder="년(YYYY)" maxlength="4" inputmode="numeric" autocomplete="off">
+          <input type="text" id="birth-month" class="text-input" placeholder="월(MM)" maxlength="2" inputmode="numeric" autocomplete="off">
+          <input type="text" id="birth-day" class="text-input" placeholder="일(DD)" maxlength="2" inputmode="numeric" autocomplete="off">
+        </div>
+      </div>
+      <button id="draw-btn" class="draw-btn" disabled>연애 운세 분석하기</button>
+    </section>
+
+    <!-- Screen 2: Drawing Animation -->
+    <section id="drawing-screen" class="screen">
+      <div class="heart-container" id="heart-container">
+        <div class="heart" id="heart-emoji">💖</div>
+      </div>
+      <div class="drawing-text" id="drawing-text">사랑의 별을 읽는 중...</div>
+    </section>
+
+    <!-- Screen 3: Results -->
+    <section id="result-screen" class="screen">
+      <div class="shared-banner" id="shared-banner" style="display:none;">
+        💕 나도 내 연애 매력 분석해보기! 💕
+      </div>
+      <div class="result-header">
+        <div class="result-name" id="result-name"></div>
+        <div class="charm-label">연애 매력 지수</div>
+        <div class="charm-index" id="charm-index"></div>
+        <div class="result-grade" id="result-grade"></div>
+      </div>
+      <div class="cards-grid" id="cards-grid"></div>
+      <div class="btn-group">
+        <button class="share-btn" id="share-btn">🔗 링크 복사하기</button>
+        <button class="retry-btn" id="retry-btn">🔄 다시 분석하기</button>
+      </div>
+      <div class="footer">2026 연애 운세 분석기</div>
+    </section>
+
+    <div id="toast"></div>
+  </div>
+
+  <script>
+    // ============ Constants ============
+    const FIRST_IMPRESSION_DESCS = [
+      "눈이 마주치면 심장이 두근거리는 타입이에요",
+      "밝은 미소가 사람들의 시선을 사로잡아요",
+      "은은한 매력이 서서히 빠져들게 해요",
+      "첫 만남부터 강렬한 인상을 남겨요",
+      "편안한 분위기가 상대를 안심시켜요",
+      "독특한 매력으로 호기심을 자극해요",
+      "세련된 이미지가 눈길을 끌어요",
+      "자연스러운 매력이 빛나는 타입이에요"
+    ];
+
+    const CONVERSATION_DESCS = [
+      "유머 감각이 뛰어나서 웃음이 끊이질 않아요",
+      "진지한 대화에서 깊이가 느껴져요",
+      "상대의 이야기에 공감을 잘 해줘요",
+      "대화 주제가 풍부해서 지루할 틈이 없어요",
+      "적절한 리액션으로 분위기를 살려요",
+      "솔직한 표현이 오히려 매력적이에요",
+      "목소리 톤이 상대를 편안하게 만들어요",
+      "위트있는 말투가 사람들을 끌어당겨요"
+    ];
+
+    const FLUTTER_DESCS = [
+      "같이 있으면 심장이 콩닥콩닥 뛰어요",
+      "은근한 스킨십으로 설렘을 유발해요",
+      "예상치 못한 순간에 설레게 만들어요",
+      "눈빛만으로도 설렘을 전달할 수 있어요",
+      "자연스러운 다정함이 설렘 포인트예요",
+      "밀당의 고수! 절묘한 타이밍의 소유자",
+      "함께하는 순간마다 특별하게 만들어요",
+      "사소한 배려가 큰 설렘을 선사해요"
+    ];
+
+    const DATING_STYLES = [
+      { name: "츤데레형", desc: "겉으로는 무심한 척하지만 속으로는 상대를 누구보다 챙기는 타입. 표현이 서투르지만 진심은 깊어요." },
+      { name: "다정다감형", desc: "매 순간 따뜻한 말과 행동으로 상대를 감싸는 타입. 함께하면 세상이 포근해져요." },
+      { name: "자유로운 영혼형", desc: "서로의 개성을 존중하며 함께 성장하는 연애를 추구해요. 구속 없는 사랑이 모토!" },
+      { name: "로맨티스트형", desc: "깜짝 이벤트와 감동적인 순간을 만들어내는 천재. 매일이 영화 같은 연애를 해요." },
+      { name: "베스트프렌드형", desc: "연인이자 가장 친한 친구! 편안하고 즐거운 관계를 만들어가는 달인이에요." },
+      { name: "헌신적인 수호자형", desc: "상대를 위해서라면 무엇이든 하는 든든한 타입. 깊은 사랑과 책임감의 소유자." },
+      { name: "지적 매력형", desc: "깊이 있는 대화와 서로의 성장을 즐기는 타입. 머리와 마음이 동시에 반하게 해요." },
+      { name: "에너지 넘치는 활력형", desc: "함께하면 매일이 신나는 모험! 긍정 에너지로 상대를 행복하게 만들어요." },
+      { name: "감성 충만형", desc: "음악, 영화, 예술을 함께 즐기며 감정을 나누는 타입. 영혼의 교감을 중시해요." },
+      { name: "든든한 리더형", desc: "앞장서서 이끌어가는 카리스마! 믿음직하고 결단력 있는 연애를 해요." },
+      { name: "사랑꾼 애교형", desc: "넘치는 애교와 달콤한 말로 상대를 녹이는 타입. 귀여움이 무기예요." },
+      { name: "미스터리형", desc: "알 듯 모를 듯한 매력으로 상대의 호기심을 자극해요. 알면 알수록 빠져들어요." },
+      { name: "따뜻한 치유형", desc: "상대의 마음을 어루만지고 위로해주는 타입. 함께하면 마음이 편안해져요." },
+      { name: "열정적인 불꽃형", desc: "한 번 사랑하면 전력을 다하는 타입. 뜨겁고 강렬한 사랑의 소유자예요." },
+      { name: "계획적인 전략가형", desc: "데이트 코스부터 기념일까지 완벽하게 준비하는 타입. 세심함이 매력이에요." }
+    ];
+
+    const IDEAL_KEYWORDS = [
+      "따뜻한 눈빛", "유머 감각", "솔직함", "다정함", "지적인 매력",
+      "든든한 어깨", "밝은 에너지", "감성적인", "배려심", "자신감",
+      "수줍은 미소", "목소리가 좋은", "패션 감각", "요리 잘하는",
+      "동물을 좋아하는", "여행을 좋아하는", "음악적 감성", "운동하는",
+      "책을 좋아하는", "야망 있는", "순수한", "카리스마", "귀여운 매력",
+      "성숙한", "장난기 많은"
+    ];
+
+    const FORTUNE_MESSAGES = [
+      "2026년, 운명적인 만남이 당신을 기다리고 있어요. 마음을 열어보세요!",
+      "올해 당신의 매력은 최고조! 자신감을 가지면 사랑이 찾아와요.",
+      "소중한 인연이 더욱 깊어지는 한 해가 될 거예요. 함께하는 시간을 소중히!",
+      "뜻밖의 장소에서 특별한 인연을 만나게 될 수 있어요. 두근두근!",
+      "올해는 당신의 진심이 통하는 해! 용기 내어 표현해보세요.",
+      "사랑의 타이밍이 딱 맞아떨어지는 시기예요. 기회를 놓치지 마세요!",
+      "내면의 매력이 빛나는 해! 자연스러운 당신 그대로가 최고예요.",
+      "2026년 하반기에 특별한 설렘이 찾아올 예감이에요!",
+      "작은 친절이 큰 사랑으로 돌아오는 한 해가 될 거예요.",
+      "올해 당신은 누군가에게 잊지 못할 사람이 될 거예요.",
+      "진정한 사랑은 가까이에 있어요. 주변을 한 번 둘러보세요!",
+      "당신의 웃는 모습이 누군가의 하루를 밝게 만들고 있어요."
+    ];
+
+    const DRAWING_TEXTS = [
+      "사랑의 별을 읽는 중...",
+      "인연의 실을 찾는 중...",
+      "심장 박동을 분석 중...",
+      "운명의 상대를 점치는 중..."
+    ];
+
+    // ============ Hash & PRNG ============
+    function hashName(name) {
+      let hash = 5381;
+      for (let i = 0; i < name.length; i++) {
+        hash = ((hash << 5) + hash) + name.charCodeAt(i);
+        hash = hash & hash;
+      }
+      return Math.abs(hash);
+    }
+
+    function seededRandom(seed) {
+      return function() {
+        seed |= 0;
+        seed = seed + 0x6D2B79F5 | 0;
+        let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      };
+    }
+
+    function generateLoveFortune(name, birthday) {
+      const rng = seededRandom(hashName(name + (birthday || '') + 'love2026'));
+
+      // Overall charm index: 60-99
+      const charmIndex = Math.floor(rng() * 40) + 60;
+
+      // First Impression Charm: 60-99
+      const firstImpressionScore = Math.floor(rng() * 40) + 60;
+      const firstImpressionDesc = FIRST_IMPRESSION_DESCS[Math.floor(rng() * FIRST_IMPRESSION_DESCS.length)];
+
+      // Conversation Skill: 60-99
+      const conversationScore = Math.floor(rng() * 40) + 60;
+      const conversationDesc = CONVERSATION_DESCS[Math.floor(rng() * CONVERSATION_DESCS.length)];
+
+      // Flutter Index: 60-99
+      const flutterScore = Math.floor(rng() * 40) + 60;
+      const flutterDesc = FLUTTER_DESCS[Math.floor(rng() * FLUTTER_DESCS.length)];
+
+      // Dating Style
+      const datingStyle = DATING_STYLES[Math.floor(rng() * DATING_STYLES.length)];
+
+      // Ideal Type Keywords: pick 3 unique
+      const keywordsCopy = [...IDEAL_KEYWORDS];
+      const selectedKeywords = [];
+      for (let i = 0; i < 3; i++) {
+        const idx = Math.floor(rng() * keywordsCopy.length);
+        selectedKeywords.push(keywordsCopy.splice(idx, 1)[0]);
+      }
+
+      // Fortune Message
+      const fortuneMsg = FORTUNE_MESSAGES[Math.floor(rng() * FORTUNE_MESSAGES.length)];
+
+      // Grade
+      let grade, gradeLabel;
+      if (charmIndex >= 90) { grade = 'S'; gradeLabel = 'S급 연애신'; }
+      else if (charmIndex >= 80) { grade = 'A+'; gradeLabel = 'A+ 매력만점'; }
+      else if (charmIndex >= 70) { grade = 'A'; gradeLabel = 'A 인기쟁이'; }
+      else { grade = 'B+'; gradeLabel = 'B+ 숨은매력'; }
+
+      return {
+        charmIndex,
+        grade,
+        gradeLabel,
+        cards: [
+          { key: 'first-impression', emoji: '👀', title: '첫인상 매력', score: firstImpressionScore, desc: firstImpressionDesc, colorClass: 'first-impression' },
+          { key: 'conversation', emoji: '💬', title: '대화 능력', score: conversationScore, desc: conversationDesc, colorClass: 'conversation' },
+          { key: 'flutter', emoji: '💓', title: '설렘 지수', score: flutterScore, desc: flutterDesc, colorClass: 'flutter' },
+          { key: 'dating-style', emoji: '💑', title: '연애 스타일', score: null, styleName: datingStyle.name, desc: datingStyle.desc },
+          { key: 'ideal-keywords', emoji: '🔮', title: '이상형 키워드', score: null, keywords: selectedKeywords },
+          { key: 'fortune-msg', emoji: '💌', title: '연애 운세 한마디', score: null, desc: fortuneMsg },
+        ]
+      };
+    }
+
+    // ============ DOM Helpers ============
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => document.querySelectorAll(sel);
+
+    function showScreen(id) {
+      $$('.screen').forEach(s => s.classList.remove('active'));
+      $(`#${id}`).classList.add('active');
+    }
+
+    function showToast(msg) {
+      const toast = $('#toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+    // ============ Particles ============
+    function createParticles() {
+      const emojis = ['💕', '💗', '🌹', '💘', '✨', '🦋'];
+      const container = $('#particles');
+      for (let i = 0; i < 15; i++) {
+        const span = document.createElement('span');
+        span.className = 'particle';
+        span.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+        span.style.left = Math.random() * 100 + 'vw';
+        span.style.animationDuration = (8 + Math.random() * 12) + 's';
+        span.style.animationDelay = (Math.random() * 10) + 's';
+        span.style.fontSize = (16 + Math.random() * 14) + 'px';
+        container.appendChild(span);
+      }
+    }
+
+    // ============ Sparkle Burst ============
+    function createSparkles(container) {
+      for (let i = 0; i < 16; i++) {
+        const sparkle = document.createElement('div');
+        sparkle.className = 'sparkle';
+        const angle = (i / 16) * Math.PI * 2;
+        const distance = 60 + Math.random() * 40;
+        const tx = Math.cos(angle) * distance;
+        const ty = Math.sin(angle) * distance;
+        sparkle.style.left = '50%';
+        sparkle.style.top = '50%';
+        sparkle.style.width = (4 + Math.random() * 6) + 'px';
+        sparkle.style.height = sparkle.style.width;
+        sparkle.style.background = ['#ff6b9d', '#ff4757', '#ffb6c1', '#e84393', '#fff'][Math.floor(Math.random() * 5)];
+        sparkle.animate([
+          { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
+          { transform: `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px)) scale(0)`, opacity: 0 }
+        ], { duration: 800, easing: 'cubic-bezier(0, 0.5, 0.5, 1)', fill: 'forwards' });
+        container.appendChild(sparkle);
+      }
+    }
+
+    // ============ Drawing Animation ============
+    function startDrawing(name, birthday) {
+      showScreen('drawing-screen');
+      // Reset heart
+      const heartEl = $('#heart-emoji');
+      heartEl.className = 'heart';
+      heartEl.style.animation = 'none';
+      heartEl.offsetHeight;
+      heartEl.style.animation = '';
+
+      const textEl = $('#drawing-text');
+      let textIndex = 0;
+
+      const textInterval = setInterval(() => {
+        textIndex = (textIndex + 1) % DRAWING_TEXTS.length;
+        textEl.textContent = DRAWING_TEXTS[textIndex];
+        textEl.style.animation = 'none';
+        textEl.offsetHeight;
+        textEl.style.animation = 'fadeInOut 0.5s ease';
+      }, 600);
+
+      setTimeout(() => {
+        heartEl.classList.add('open');
+        createSparkles($('#heart-container'));
+      }, 1500);
+
+      setTimeout(() => {
+        clearInterval(textInterval);
+        const result = generateLoveFortune(name, birthday);
+        showResults(name, result);
+      }, 2500);
+    }
+
+    // ============ Results ============
+    function showResults(name, result) {
+      showScreen('result-screen');
+
+      $('#result-name').textContent = `${name}님의 2026 연애 운세`;
+      $('#charm-index').textContent = `${result.charmIndex}%`;
+      $('#result-grade').textContent = result.gradeLabel;
+
+      const grid = $('#cards-grid');
+      grid.innerHTML = '';
+
+      result.cards.forEach((card, i) => {
+        const el = document.createElement('div');
+        const isWide = card.key === 'dating-style' || card.key === 'ideal-keywords' || card.key === 'fortune-msg';
+        el.className = `luck-card${isWide ? ' wide-card' : ''}`;
+        el.style.animationDelay = `${i * 0.1}s`;
+
+        if (card.score !== null) {
+          el.innerHTML = `
+            <div class="card-emoji">${card.emoji}</div>
+            <div class="card-title">${card.title}</div>
+            <div class="score-bar">
+              <div class="score-fill ${card.colorClass}" id="fill-${card.key}"></div>
+            </div>
+            <div class="card-score">${card.score}점</div>
+            <div class="card-desc">${card.desc}</div>
+          `;
+        } else if (card.key === 'dating-style') {
+          el.innerHTML = `
+            <div class="card-emoji">${card.emoji}</div>
+            <div class="card-title">${card.title}</div>
+            <div class="card-score">${card.styleName}</div>
+            <div class="card-desc">${card.desc}</div>
+          `;
+        } else if (card.key === 'ideal-keywords') {
+          el.innerHTML = `
+            <div class="card-emoji">${card.emoji}</div>
+            <div class="card-title">${card.title}</div>
+            <div class="keywords-list">
+              ${card.keywords.map(k => `<span class="keyword-tag">#${k}</span>`).join('')}
+            </div>
+          `;
+        } else if (card.key === 'fortune-msg') {
+          el.innerHTML = `
+            <div class="card-emoji">${card.emoji}</div>
+            <div class="card-title">${card.title}</div>
+            <div class="card-desc" style="font-size: 0.9rem; font-weight: 500;">${card.desc}</div>
+          `;
+        }
+
+        grid.appendChild(el);
+      });
+
+      // Animate score bars
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          result.cards.forEach(card => {
+            if (card.score !== null) {
+              const fill = $(`#fill-${card.key}`);
+              if (fill) fill.style.width = card.score + '%';
+            }
+          });
+        }, 300);
+      });
+
+      // Show shared banner if from URL
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('name')) {
+        $('#shared-banner').style.display = 'block';
+      }
+    }
+
+    // ============ Sharing ============
+    function copyShareLink(name, birthday) {
+      let url = `${window.location.origin}${window.location.pathname}?name=${encodeURIComponent(name)}`;
+      if (birthday) url += `&birth=${encodeURIComponent(birthday)}`;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(() => {
+          showToast('링크가 복사되었습니다!');
+        }).catch(() => fallbackCopy(url));
+      } else {
+        fallbackCopy(url);
+      }
+    }
+
+    function fallbackCopy(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast('링크가 복사되었습니다!');
+      } catch {
+        showToast('링크 복사에 실패했습니다');
+      }
+      document.body.removeChild(ta);
+    }
+
+    // ============ Init ============
+    let currentName = '';
+    let currentBirthday = '';
+
+    function getBirthday() {
+      const y = $('#birth-year').value.trim();
+      const m = $('#birth-month').value.trim().padStart(2, '0');
+      const d = $('#birth-day').value.trim().padStart(2, '0');
+      if (y && m && d) return `${y}${m}${d}`;
+      return '';
+    }
+
+    function checkFormValid() {
+      const name = $('#name-input').value.trim();
+      const y = $('#birth-year').value.trim();
+      const m = $('#birth-month').value.trim();
+      const d = $('#birth-day').value.trim();
+      $('#draw-btn').disabled = !(name && y.length === 4 && m && d);
+    }
+
+    function init() {
+      createParticles();
+
+      const nameInput = $('#name-input');
+      const drawBtn = $('#draw-btn');
+      const birthInputs = ['#birth-year', '#birth-month', '#birth-day'];
+
+      nameInput.addEventListener('input', checkFormValid);
+      birthInputs.forEach(sel => {
+        $(sel).addEventListener('input', function() {
+          const maxLen = parseInt(this.maxLength);
+          if (this.value.length >= maxLen) {
+            const idx = birthInputs.indexOf(sel);
+            if (idx < birthInputs.length - 1) {
+              $(birthInputs[idx + 1]).focus();
+            }
+          }
+          checkFormValid();
+        });
+      });
+
+      document.querySelectorAll('#intro-screen input').forEach(input => {
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && !drawBtn.disabled) {
+            startDraw();
+          }
+        });
+      });
+
+      drawBtn.addEventListener('click', startDraw);
+
+      function startDraw() {
+        currentName = nameInput.value.trim();
+        currentBirthday = getBirthday();
+        if (!currentName) return;
+        startDrawing(currentName, currentBirthday);
+      }
+
+      $('#share-btn').addEventListener('click', () => {
+        copyShareLink(currentName, currentBirthday);
+      });
+
+      $('#retry-btn').addEventListener('click', () => {
+        currentName = '';
+        currentBirthday = '';
+        nameInput.value = '';
+        birthInputs.forEach(sel => $(sel).value = '');
+        drawBtn.disabled = true;
+        // Reset heart
+        const heartEl = $('#heart-emoji');
+        heartEl.className = 'heart';
+        heartEl.style.animation = 'none';
+        heartEl.offsetHeight;
+        heartEl.style.animation = '';
+        showScreen('intro-screen');
+        nameInput.focus();
+      });
+
+      $('#shared-banner').addEventListener('click', () => {
+        window.history.replaceState({}, '', window.location.pathname);
+        currentName = '';
+        currentBirthday = '';
+        nameInput.value = '';
+        birthInputs.forEach(sel => $(sel).value = '');
+        drawBtn.disabled = true;
+        $('#shared-banner').style.display = 'none';
+        showScreen('intro-screen');
+        nameInput.focus();
+      });
+
+      // Check URL params on load
+      const params = new URLSearchParams(window.location.search);
+      const sharedName = params.get('name');
+      const sharedBirth = params.get('birth') || '';
+      if (sharedName) {
+        currentName = sharedName;
+        currentBirthday = sharedBirth;
+        startDrawing(sharedName, sharedBirth);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

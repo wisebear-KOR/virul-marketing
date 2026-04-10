@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>전생 직업 알아보기</title>
+  <meta property="og:title" content="전생 직업 알아보기">
+  <meta property="og:description" content="내 이름으로 전생의 직업을 알아보세요!">
+  <meta property="og:type" content="website">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      color: #fff;
+      overflow-x: hidden;
+    }
+
+    #app {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 20px 40px;
+      position: relative;
+    }
+
+    #app:has(#result-screen.active) {
+      justify-content: flex-start;
+      padding-top: 40px;
+    }
+
+    .particle {
+      position: fixed;
+      font-size: 20px;
+      pointer-events: none;
+      z-index: 0;
+      animation: floatUp linear infinite;
+      opacity: 0.6;
+    }
+
+    @keyframes floatUp {
+      0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+      10% { opacity: 0.6; }
+      90% { opacity: 0.6; }
+      100% { transform: translateY(-10vh) rotate(360deg); opacity: 0; }
+    }
+
+    .screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 480px;
+      z-index: 1;
+    }
+
+    .screen.active { display: flex; }
+
+    .title {
+      font-size: 2.2rem;
+      font-weight: 800;
+      text-align: center;
+      margin-bottom: 12px;
+      background: linear-gradient(to right, #ffd700, #ffaa00, #ffd700);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmer 3s linear infinite;
+    }
+
+    @keyframes shimmer {
+      0% { background-position: -200% center; }
+      100% { background-position: 200% center; }
+    }
+
+    .subtitle {
+      font-size: 1rem;
+      opacity: 0.85;
+      text-align: center;
+      margin-bottom: 40px;
+      line-height: 1.5;
+    }
+
+    .input-group { width: 100%; margin-bottom: 16px; }
+
+    .text-input {
+      width: 100%;
+      padding: 16px 20px;
+      font-size: 1.1rem;
+      border: 2px solid rgba(255,215,0,0.3);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      color: #fff;
+      text-align: center;
+      outline: none;
+      transition: border-color 0.3s, background 0.3s;
+      font-family: inherit;
+    }
+
+    .text-input::placeholder { color: rgba(255,255,255,0.5); }
+    .text-input:focus {
+      border-color: rgba(255,215,0,0.6);
+      background: rgba(255,255,255,0.18);
+    }
+
+    .input-label {
+      font-size: 0.85rem;
+      opacity: 0.7;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    .birthday-row { display: flex; gap: 8px; }
+    .birthday-row .text-input { flex: 1; padding: 14px 8px; font-size: 1rem; }
+    .birthday-row .text-input.year { flex: 1.3; }
+
+    .draw-btn {
+      width: 100%;
+      padding: 18px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
+      color: #1a1a2e;
+      cursor: pointer;
+      font-family: inherit;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 20px rgba(255,215,0,0.4);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .draw-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 25px rgba(255,215,0,0.6); }
+    .draw-btn:active { transform: translateY(0); }
+    .draw-btn:disabled { opacity: 0.5; cursor: not-allowed; animation: none; }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+    }
+
+    #drawing-screen { justify-content: center; min-height: 60vh; }
+
+    .portal-container {
+      position: relative;
+      width: 160px;
+      height: 160px;
+      margin-bottom: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .portal-ring {
+      position: absolute;
+      border: 3px dashed rgba(255,215,0,0.6);
+      border-radius: 50%;
+      animation: portalSpin linear infinite;
+    }
+
+    .portal-ring:nth-child(1) { width: 160px; height: 160px; animation-duration: 4s; }
+    .portal-ring:nth-child(2) { width: 120px; height: 120px; animation-duration: 3s; animation-direction: reverse; border-color: rgba(255,140,0,0.5); }
+    .portal-ring:nth-child(3) { width: 80px; height: 80px; animation-duration: 2s; border-color: rgba(255,215,0,0.4); }
+
+    .portal-center {
+      font-size: 3rem;
+      z-index: 1;
+      animation: portalPulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes portalSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    @keyframes portalPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.2); } }
+
+    .drawing-text {
+      font-size: 1.1rem;
+      font-weight: 600;
+      animation: fadeInOut 0.5s ease;
+    }
+
+    @keyframes fadeInOut {
+      0% { opacity: 0; transform: translateY(5px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    .sparkle {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ffd700;
+      pointer-events: none;
+    }
+
+    .shared-banner {
+      width: 100%;
+      padding: 14px;
+      background: rgba(255,215,0,0.15);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      text-align: center;
+      margin-bottom: 20px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.3s;
+      border: 1px solid rgba(255,215,0,0.3);
+    }
+
+    .shared-banner:hover { background: rgba(255,215,0,0.25); }
+
+    .result-header {
+      text-align: center;
+      margin-bottom: 24px;
+      animation: slideDown 0.5s ease;
+    }
+
+    @keyframes slideDown {
+      0% { opacity: 0; transform: translateY(-20px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-name { font-size: 1.3rem; font-weight: 700; margin-bottom: 8px; }
+
+    .result-job {
+      font-size: 1.6rem;
+      font-weight: 800;
+      padding: 12px 24px;
+      background: linear-gradient(135deg, rgba(255,215,0,0.2), rgba(255,140,0,0.2));
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      border: 2px solid rgba(255,215,0,0.3);
+      margin-top: 8px;
+      margin-bottom: 8px;
+      display: inline-block;
+    }
+
+    .result-grade {
+      display: inline-block;
+      font-size: 2.2rem;
+      font-weight: 800;
+      padding: 8px 24px;
+      background: rgba(255,215,0,0.15);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      border: 2px solid rgba(255,215,0,0.3);
+      margin-top: 8px;
+    }
+
+    .grade-label { font-size: 0.85rem; opacity: 0.8; margin-top: 6px; }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      width: 100%;
+      margin-bottom: 24px;
+    }
+
+    .luck-card {
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      border: 1px solid rgba(255,215,0,0.15);
+      padding: 16px;
+      opacity: 0;
+      transform: translateY(20px);
+      animation: cardAppear 0.4s ease forwards;
+    }
+
+    @keyframes cardAppear { to { opacity: 1; transform: translateY(0); } }
+
+    .card-emoji { font-size: 1.8rem; margin-bottom: 6px; }
+    .card-title { font-size: 0.85rem; font-weight: 600; opacity: 0.8; margin-bottom: 8px; }
+
+    .score-bar {
+      width: 100%;
+      height: 8px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    .score-fill {
+      height: 100%;
+      border-radius: 4px;
+      width: 0%;
+      transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .score-fill.leadership { background: linear-gradient(90deg, #ffd700, #ff8c00); }
+    .score-fill.creativity { background: linear-gradient(90deg, #f093fb, #f5576c); }
+    .score-fill.courage { background: linear-gradient(90deg, #ff6b6b, #ee5a24); }
+    .score-fill.wisdom { background: linear-gradient(90deg, #4facfe, #00f2fe); }
+    .score-fill.charisma { background: linear-gradient(90deg, #a18cd1, #fbc2eb); }
+
+    .card-score { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
+    .card-desc { font-size: 0.8rem; opacity: 0.85; line-height: 1.4; }
+
+    .luck-card.lesson-card .card-score { font-size: 0.95rem; }
+
+    .btn-group { display: flex; gap: 12px; width: 100%; }
+
+    .share-btn, .retry-btn {
+      flex: 1;
+      padding: 16px;
+      font-size: 1rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 16px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .share-btn {
+      background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
+      color: #1a1a2e;
+      box-shadow: 0 4px 20px rgba(255,215,0,0.4);
+    }
+
+    .retry-btn {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      border: 1px solid rgba(255,215,0,0.3);
+      backdrop-filter: blur(10px);
+    }
+
+    .share-btn:hover, .retry-btn:hover { transform: translateY(-2px); }
+    .share-btn:active, .retry-btn:active { transform: translateY(0); }
+
+    #toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: rgba(0,0,0,0.85);
+      color: #fff;
+      padding: 14px 28px;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      z-index: 100;
+      transition: transform 0.3s ease;
+      backdrop-filter: blur(10px);
+    }
+
+    #toast.show { transform: translateX(-50%) translateY(0); }
+
+    .footer { margin-top: 24px; font-size: 0.75rem; opacity: 0.5; text-align: center; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="particles"></div>
+
+    <section id="intro-screen" class="screen active">
+      <div class="title">전생 직업 알아보기</div>
+      <div class="subtitle">이름과 생년월일을 입력하고<br>전생의 직업을 확인하세요!</div>
+      <div class="input-group">
+        <input type="text" id="name-input" class="text-input" placeholder="이름을 입력하세요" maxlength="20" autocomplete="off">
+      </div>
+      <div class="input-group">
+        <div class="input-label">생년월일</div>
+        <div class="birthday-row">
+          <input type="text" id="birth-year" class="text-input year" placeholder="년(YYYY)" maxlength="4" inputmode="numeric" autocomplete="off">
+          <input type="text" id="birth-month" class="text-input" placeholder="월(MM)" maxlength="2" inputmode="numeric" autocomplete="off">
+          <input type="text" id="birth-day" class="text-input" placeholder="일(DD)" maxlength="2" inputmode="numeric" autocomplete="off">
+        </div>
+      </div>
+      <button id="draw-btn" class="draw-btn" disabled>전생 알아보기!</button>
+    </section>
+
+    <section id="drawing-screen" class="screen">
+      <div class="portal-container" id="portal-container">
+        <div class="portal-ring"></div>
+        <div class="portal-ring"></div>
+        <div class="portal-ring"></div>
+        <div class="portal-center">🔮</div>
+      </div>
+      <div class="drawing-text" id="drawing-text">전생의 기억을 찾는 중...</div>
+    </section>
+
+    <section id="result-screen" class="screen">
+      <div class="shared-banner" id="shared-banner" style="display:none;">
+        🔮 나도 내 전생 직업 알아보기! 🔮
+      </div>
+      <div class="result-header">
+        <div class="result-name" id="result-name"></div>
+        <div class="grade-label">전생의 직업</div>
+        <div class="result-job" id="result-job"></div>
+        <div class="grade-label">전생 등급</div>
+        <div class="result-grade" id="result-grade"></div>
+      </div>
+      <div class="cards-grid" id="cards-grid"></div>
+      <div class="btn-group">
+        <button class="share-btn" id="share-btn">🔗 링크 복사하기</button>
+        <button class="retry-btn" id="retry-btn">🔄 다시 알아보기</button>
+      </div>
+      <div class="footer">전생 직업 알아보기</div>
+    </section>
+
+    <div id="toast"></div>
+  </div>
+
+  <script>
+    const CATEGORIES = [
+      { key: 'leadership', name: '리더십', emoji: '👑', colorClass: 'leadership' },
+      { key: 'creativity', name: '창의력', emoji: '🎨', colorClass: 'creativity' },
+      { key: 'courage', name: '용기', emoji: '⚔️', colorClass: 'courage' },
+      { key: 'wisdom', name: '지혜', emoji: '📚', colorClass: 'wisdom' },
+      { key: 'charisma', name: '카리스마', emoji: '✨', colorClass: 'charisma' },
+    ];
+
+    const DESCRIPTIONS = {
+      leadership: [
+        "사람들이 자연스럽게 따르는 힘이 있었어요",
+        "큰 조직을 이끌 수 있는 능력이 있었어요",
+        "위기 상황에서 빛나는 지도력이었어요",
+        "공정한 판단으로 존경을 받았어요",
+        "앞장서서 길을 여는 개척자였어요",
+        "사람들에게 희망을 주는 존재였어요",
+        "강한 책임감으로 모두를 이끌었어요",
+        "결단력 있는 리더의 자질이 빛났어요"
+      ],
+      creativity: [
+        "아무도 생각하지 못한 것을 만들어냈어요",
+        "예술적 감각이 시대를 앞서갔어요",
+        "독창적인 아이디어로 세상을 놀라게 했어요",
+        "상상력이 현실을 바꾸는 힘이었어요",
+        "새로운 것을 창조하는 기쁨을 알았어요",
+        "손끝에서 아름다움이 탄생했어요",
+        "남다른 시각으로 세상을 바라봤어요",
+        "창의적 영감이 끊이지 않았어요"
+      ],
+      courage: [
+        "두려움 없이 앞으로 나아갔어요",
+        "정의를 위해 맞서 싸웠어요",
+        "위험 속에서도 흔들리지 않았어요",
+        "모두가 피할 때 홀로 나섰어요",
+        "강한 의지로 역경을 극복했어요",
+        "담대한 도전으로 역사를 만들었어요",
+        "용감한 행동으로 많은 이를 구했어요",
+        "두려움을 이기는 법을 알고 있었어요"
+      ],
+      wisdom: [
+        "깊은 통찰력으로 미래를 내다봤어요",
+        "지식을 나누는 것이 삶의 보람이었어요",
+        "어려운 문제도 쉽게 풀어냈어요",
+        "현명한 조언으로 많은 이를 도왔어요",
+        "경험에서 우러나온 지혜가 빛났어요",
+        "학문에 대한 열정이 대단했어요",
+        "복잡한 것을 단순하게 설명하는 재능이 있었어요",
+        "세상의 이치를 꿰뚫어 보았어요"
+      ],
+      charisma: [
+        "사람들의 마음을 사로잡는 매력이 있었어요",
+        "말 한마디로 분위기를 바꿨어요",
+        "자연스러운 존재감이 돋보였어요",
+        "누구와도 잘 어울리는 친화력이 있었어요",
+        "한번 만나면 잊을 수 없는 인상이었어요",
+        "타고난 설득력으로 사람을 움직였어요",
+        "밝은 에너지로 주변을 환하게 했어요",
+        "신비로운 매력에 모두가 끌렸어요"
+      ]
+    };
+
+    const PAST_LIFE_JOBS = [
+      "조선시대 궁중 요리사", "로마 검투사", "이집트 건축가", "빅토리아 시대 탐정",
+      "고대 그리스 철학자", "중세 유럽 기사", "당나라 시인", "바이킹 항해사",
+      "마야 문명 천문학자", "르네상스 화가", "고려시대 도공", "페르시아 상인",
+      "일본 사무라이", "아즈텍 신관", "고대 인도 수학자", "중세 연금술사",
+      "조선시대 어의", "로마 원로원 의원", "이집트 서기관", "몽골 기마병",
+      "빅토리아 시대 발명가", "고대 중국 장군", "그리스 올림픽 선수", "중세 음유시인",
+      "잉카 제국 건축가", "조선시대 역관", "페니키아 무역상", "고대 이집트 사제",
+      "르네상스 조각가", "당나라 장군", "고대 로마 건축가", "조선시대 풍수사",
+      "중세 대장장이", "고대 그리스 의사", "바빌론 점성술사"
+    ];
+
+    const LESSONS = [
+      "과거의 용기가 현재의 자신감이 됩니다",
+      "지혜는 시간을 초월하여 영혼에 남습니다",
+      "전생의 인연은 현생에서도 이어집니다",
+      "과거에 쌓은 덕이 지금의 행운입니다",
+      "영혼은 매번 새로운 교훈을 배웁니다",
+      "전생의 노력이 현생의 재능이 되었습니다",
+      "사랑은 시간을 넘어 기억됩니다",
+      "과거를 알면 미래가 보입니다",
+      "모든 경험은 영혼의 성장을 위한 것입니다",
+      "전생의 약속이 현생의 만남이 됩니다",
+      "고통은 지나가고 배움은 영원히 남습니다",
+      "과거의 실수는 현재의 지혜가 됩니다",
+      "영혼은 성장을 멈추지 않습니다",
+      "전생에서 사랑한 사람을 다시 만나게 됩니다",
+      "매 생은 더 나은 자신이 되기 위한 여정입니다"
+    ];
+
+    const DRAWING_TEXTS = [
+      "전생의 기억을 찾는 중...",
+      "시간을 거슬러 가는 중...",
+      "과거의 문을 여는 중...",
+      "전생의 인연을 읽는 중..."
+    ];
+
+    function hashName(name) {
+      let hash = 5381;
+      for (let i = 0; i < name.length; i++) {
+        hash = ((hash << 5) + hash) + name.charCodeAt(i);
+        hash = hash & hash;
+      }
+      return Math.abs(hash);
+    }
+
+    function seededRandom(seed) {
+      return function() {
+        seed |= 0;
+        seed = seed + 0x6D2B79F5 | 0;
+        let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      };
+    }
+
+    function generateResult(name, birthday) {
+      const rng = seededRandom(hashName(name + (birthday || '')));
+      const results = [];
+      let totalScore = 0;
+
+      for (const cat of CATEGORIES) {
+        const score = Math.floor(rng() * 40) + 60;
+        const descIndex = Math.floor(rng() * DESCRIPTIONS[cat.key].length);
+        totalScore += score;
+        results.push({ ...cat, score, description: DESCRIPTIONS[cat.key][descIndex] });
+      }
+
+      const jobIndex = Math.floor(rng() * PAST_LIFE_JOBS.length);
+      const lessonIndex = Math.floor(rng() * LESSONS.length);
+
+      results.push({
+        key: 'lesson', name: '전생의 교훈', emoji: '📜', colorClass: 'lesson',
+        score: null, description: LESSONS[lessonIndex]
+      });
+
+      const avg = totalScore / CATEGORIES.length;
+      let grade;
+      if (avg >= 90) grade = 'S급 전설';
+      else if (avg >= 80) grade = 'A+ 영웅';
+      else if (avg >= 70) grade = 'A 장인';
+      else grade = 'B+ 인재';
+
+      return { results, grade, job: PAST_LIFE_JOBS[jobIndex], avgScore: Math.round(avg) };
+    }
+
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => document.querySelectorAll(sel);
+
+    function showScreen(id) {
+      $$('.screen').forEach(s => s.classList.remove('active'));
+      $(`#${id}`).classList.add('active');
+    }
+
+    function showToast(msg) {
+      const toast = $('#toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+    function createParticles() {
+      const emojis = ['🔮', '⚡', '🌙', '✨', '🏛️', '📜'];
+      const container = $('#particles');
+      for (let i = 0; i < 15; i++) {
+        const span = document.createElement('span');
+        span.className = 'particle';
+        span.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+        span.style.left = Math.random() * 100 + 'vw';
+        span.style.animationDuration = (8 + Math.random() * 12) + 's';
+        span.style.animationDelay = (Math.random() * 10) + 's';
+        span.style.fontSize = (16 + Math.random() * 14) + 'px';
+        container.appendChild(span);
+      }
+    }
+
+    function createSparkles(container) {
+      for (let i = 0; i < 16; i++) {
+        const sparkle = document.createElement('div');
+        sparkle.className = 'sparkle';
+        const angle = (i / 16) * Math.PI * 2;
+        const distance = 60 + Math.random() * 40;
+        const tx = Math.cos(angle) * distance;
+        const ty = Math.sin(angle) * distance;
+        sparkle.style.left = '50%';
+        sparkle.style.top = '50%';
+        sparkle.style.width = (4 + Math.random() * 6) + 'px';
+        sparkle.style.height = sparkle.style.width;
+        sparkle.style.background = ['#ffd700', '#ff8c00', '#fff', '#f093fb', '#4facfe'][Math.floor(Math.random() * 5)];
+        sparkle.animate([
+          { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
+          { transform: `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px)) scale(0)`, opacity: 0 }
+        ], { duration: 800, easing: 'cubic-bezier(0, 0.5, 0.5, 1)', fill: 'forwards' });
+        container.appendChild(sparkle);
+      }
+    }
+
+    function startDrawing(name, birthday) {
+      showScreen('drawing-screen');
+      const textEl = $('#drawing-text');
+      let textIndex = 0;
+
+      const textInterval = setInterval(() => {
+        textIndex = (textIndex + 1) % DRAWING_TEXTS.length;
+        textEl.textContent = DRAWING_TEXTS[textIndex];
+        textEl.style.animation = 'none';
+        textEl.offsetHeight;
+        textEl.style.animation = 'fadeInOut 0.5s ease';
+      }, 600);
+
+      setTimeout(() => createSparkles($('#portal-container')), 1500);
+
+      setTimeout(() => {
+        clearInterval(textInterval);
+        const result = generateResult(name, birthday);
+        showResults(name, result);
+      }, 2500);
+    }
+
+    function showResults(name, result) {
+      showScreen('result-screen');
+
+      $('#result-name').textContent = `${name}님의 전생`;
+      $('#result-job').textContent = result.job;
+      $('#result-grade').textContent = result.grade;
+
+      const grid = $('#cards-grid');
+      grid.innerHTML = '';
+
+      result.results.forEach((item, i) => {
+        const card = document.createElement('div');
+        card.className = `luck-card ${item.key === 'lesson' ? 'lesson-card' : ''}`;
+        card.style.animationDelay = `${i * 0.1}s`;
+
+        if (item.score !== null) {
+          card.innerHTML = `
+            <div class="card-emoji">${item.emoji}</div>
+            <div class="card-title">${item.name}</div>
+            <div class="score-bar">
+              <div class="score-fill ${item.colorClass}" id="fill-${item.key}"></div>
+            </div>
+            <div class="card-score">${item.score}점</div>
+            <div class="card-desc">${item.description}</div>
+          `;
+        } else {
+          card.innerHTML = `
+            <div class="card-emoji">${item.emoji}</div>
+            <div class="card-title">${item.name}</div>
+            <div class="card-score">${item.description}</div>
+          `;
+        }
+        grid.appendChild(card);
+      });
+
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          result.results.forEach(item => {
+            if (item.score !== null) {
+              const fill = $(`#fill-${item.key}`);
+              if (fill) fill.style.width = item.score + '%';
+            }
+          });
+        }, 300);
+      });
+
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('name')) {
+        $('#shared-banner').style.display = 'block';
+      }
+    }
+
+    function copyShareLink(name, birthday) {
+      let url = `${window.location.origin}${window.location.pathname}?name=${encodeURIComponent(name)}`;
+      if (birthday) url += `&birth=${encodeURIComponent(birthday)}`;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(() => showToast('링크가 복사되었습니다!')).catch(() => fallbackCopy(url));
+      } else {
+        fallbackCopy(url);
+      }
+    }
+
+    function fallbackCopy(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); showToast('링크가 복사되었습니다!'); }
+      catch { showToast('링크 복사에 실패했습니다'); }
+      document.body.removeChild(ta);
+    }
+
+    let currentName = '';
+    let currentBirthday = '';
+
+    function getBirthday() {
+      const y = $('#birth-year').value.trim();
+      const m = $('#birth-month').value.trim().padStart(2, '0');
+      const d = $('#birth-day').value.trim().padStart(2, '0');
+      if (y && m && d) return `${y}${m}${d}`;
+      return '';
+    }
+
+    function checkFormValid() {
+      const name = $('#name-input').value.trim();
+      const y = $('#birth-year').value.trim();
+      const m = $('#birth-month').value.trim();
+      const d = $('#birth-day').value.trim();
+      $('#draw-btn').disabled = !(name && y.length === 4 && m && d);
+    }
+
+    function init() {
+      createParticles();
+
+      const nameInput = $('#name-input');
+      const drawBtn = $('#draw-btn');
+      const birthInputs = ['#birth-year', '#birth-month', '#birth-day'];
+
+      nameInput.addEventListener('input', checkFormValid);
+      birthInputs.forEach(sel => {
+        $(sel).addEventListener('input', function() {
+          const maxLen = parseInt(this.maxLength);
+          if (this.value.length >= maxLen) {
+            const idx = birthInputs.indexOf(sel);
+            if (idx < birthInputs.length - 1) $(birthInputs[idx + 1]).focus();
+          }
+          checkFormValid();
+        });
+      });
+
+      document.querySelectorAll('#intro-screen input').forEach(input => {
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && !drawBtn.disabled) startDraw();
+        });
+      });
+
+      drawBtn.addEventListener('click', startDraw);
+
+      function startDraw() {
+        currentName = nameInput.value.trim();
+        currentBirthday = getBirthday();
+        if (!currentName) return;
+        startDrawing(currentName, currentBirthday);
+      }
+
+      $('#share-btn').addEventListener('click', () => copyShareLink(currentName, currentBirthday));
+
+      $('#retry-btn').addEventListener('click', () => {
+        currentName = '';
+        currentBirthday = '';
+        nameInput.value = '';
+        birthInputs.forEach(sel => $(sel).value = '');
+        drawBtn.disabled = true;
+        showScreen('intro-screen');
+        nameInput.focus();
+      });
+
+      $('#shared-banner').addEventListener('click', () => {
+        window.history.replaceState({}, '', window.location.pathname);
+        currentName = '';
+        currentBirthday = '';
+        nameInput.value = '';
+        birthInputs.forEach(sel => $(sel).value = '');
+        drawBtn.disabled = true;
+        $('#shared-banner').style.display = 'none';
+        showScreen('intro-screen');
+        nameInput.focus();
+      });
+
+      const params = new URLSearchParams(window.location.search);
+      const sharedName = params.get('name');
+      const sharedBirth = params.get('birth') || '';
+      if (sharedName) {
+        currentName = sharedName;
+        currentBirthday = sharedBirth;
+        startDrawing(sharedName, sharedBirth);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

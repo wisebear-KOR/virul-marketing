@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>나의 인생 그래프</title>
+  <meta property="og:title" content="나의 인생 그래프">
+  <meta property="og:description" content="내 이름으로 인생 그래프를 확인해보세요!">
+  <meta property="og:type" content="website">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 50%, #fbc2eb 100%);
+      color: #2d2d2d;
+      overflow-x: hidden;
+    }
+
+    #app {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 20px 40px;
+      position: relative;
+    }
+
+    #app:has(#result-screen.active) {
+      justify-content: flex-start;
+      padding-top: 40px;
+    }
+
+    .particle {
+      position: fixed;
+      font-size: 20px;
+      pointer-events: none;
+      z-index: 0;
+      animation: floatUp linear infinite;
+      opacity: 0.5;
+    }
+
+    @keyframes floatUp {
+      0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+      10% { opacity: 0.5; }
+      90% { opacity: 0.5; }
+      100% { transform: translateY(-10vh) rotate(360deg); opacity: 0; }
+    }
+
+    .screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 480px;
+      z-index: 1;
+    }
+
+    .screen.active { display: flex; }
+
+    .title {
+      font-size: 2.2rem;
+      font-weight: 800;
+      text-align: center;
+      margin-bottom: 12px;
+      background: linear-gradient(to right, #d63384, #e85d75, #d63384);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmer 3s linear infinite;
+    }
+
+    @keyframes shimmer {
+      0% { background-position: -200% center; }
+      100% { background-position: 200% center; }
+    }
+
+    .subtitle {
+      font-size: 1rem;
+      opacity: 0.75;
+      text-align: center;
+      margin-bottom: 40px;
+      line-height: 1.5;
+    }
+
+    .input-group { width: 100%; margin-bottom: 16px; }
+
+    .text-input {
+      width: 100%;
+      padding: 16px 20px;
+      font-size: 1.1rem;
+      border: 2px solid rgba(214,51,132,0.3);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.4);
+      backdrop-filter: blur(10px);
+      color: #2d2d2d;
+      text-align: center;
+      outline: none;
+      transition: border-color 0.3s, background 0.3s;
+      font-family: inherit;
+    }
+
+    .text-input::placeholder { color: rgba(0,0,0,0.35); }
+    .text-input:focus {
+      border-color: rgba(214,51,132,0.6);
+      background: rgba(255,255,255,0.55);
+    }
+
+    .input-label { font-size: 0.85rem; opacity: 0.6; margin-bottom: 8px; text-align: center; }
+
+    .birthday-row { display: flex; gap: 8px; }
+    .birthday-row .text-input { flex: 1; padding: 14px 8px; font-size: 1rem; }
+    .birthday-row .text-input.year { flex: 1.3; }
+
+    .draw-btn {
+      width: 100%;
+      padding: 18px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+      color: #fff;
+      cursor: pointer;
+      font-family: inherit;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 20px rgba(255,107,107,0.4);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .draw-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 25px rgba(255,107,107,0.6); }
+    .draw-btn:active { transform: translateY(0); }
+    .draw-btn:disabled { opacity: 0.5; cursor: not-allowed; animation: none; }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+    }
+
+    #drawing-screen { justify-content: center; min-height: 60vh; }
+
+    .graph-anim-container {
+      position: relative;
+      width: 120px;
+      height: 120px;
+      margin-bottom: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .graph-icon {
+      font-size: 4rem;
+      z-index: 1;
+      animation: graphBounce 1s ease-in-out infinite;
+    }
+
+    @keyframes graphBounce {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-10px) scale(1.1); }
+    }
+
+    .drawing-text {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #2d2d2d;
+      animation: fadeInOut 0.5s ease;
+    }
+
+    @keyframes fadeInOut {
+      0% { opacity: 0; transform: translateY(5px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    .sparkle {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ff6b6b;
+      pointer-events: none;
+    }
+
+    .shared-banner {
+      width: 100%;
+      padding: 14px;
+      background: rgba(255,255,255,0.5);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      text-align: center;
+      margin-bottom: 20px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.3s;
+      border: 1px solid rgba(214,51,132,0.2);
+    }
+
+    .shared-banner:hover { background: rgba(255,255,255,0.65); }
+
+    .result-header {
+      text-align: center;
+      margin-bottom: 20px;
+      animation: slideDown 0.5s ease;
+    }
+
+    @keyframes slideDown {
+      0% { opacity: 0; transform: translateY(-20px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-name { font-size: 1.3rem; font-weight: 700; margin-bottom: 8px; }
+
+    .result-grade {
+      display: inline-block;
+      font-size: 2rem;
+      font-weight: 800;
+      padding: 8px 24px;
+      background: rgba(255,255,255,0.5);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      border: 2px solid rgba(214,51,132,0.3);
+      margin-top: 8px;
+      color: #d63384;
+    }
+
+    .grade-label { font-size: 0.85rem; opacity: 0.65; margin-top: 6px; }
+
+    .graph-container {
+      width: 100%;
+      background: rgba(255,255,255,0.4);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.5);
+      padding: 20px 16px 12px;
+      margin-bottom: 20px;
+      animation: cardAppear 0.5s ease forwards;
+    }
+
+    .graph-container canvas {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      width: 100%;
+      margin-bottom: 24px;
+    }
+
+    .luck-card {
+      background: rgba(255,255,255,0.4);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.5);
+      padding: 16px;
+      opacity: 0;
+      transform: translateY(20px);
+      animation: cardAppear 0.4s ease forwards;
+    }
+
+    .luck-card.full-width {
+      grid-column: 1 / -1;
+    }
+
+    @keyframes cardAppear { to { opacity: 1; transform: translateY(0); } }
+
+    .card-emoji { font-size: 1.8rem; margin-bottom: 6px; }
+    .card-title { font-size: 0.85rem; font-weight: 600; opacity: 0.65; margin-bottom: 8px; }
+    .card-score { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; color: #d63384; }
+    .card-desc { font-size: 0.8rem; opacity: 0.75; line-height: 1.4; }
+
+    .btn-group { display: flex; gap: 12px; width: 100%; }
+
+    .share-btn, .retry-btn {
+      flex: 1;
+      padding: 16px;
+      font-size: 1rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 16px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .share-btn {
+      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(255,107,107,0.4);
+    }
+
+    .retry-btn {
+      background: rgba(255,255,255,0.5);
+      color: #2d2d2d;
+      border: 1px solid rgba(214,51,132,0.2);
+      backdrop-filter: blur(10px);
+    }
+
+    .share-btn:hover, .retry-btn:hover { transform: translateY(-2px); }
+    .share-btn:active, .retry-btn:active { transform: translateY(0); }
+
+    #toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: rgba(0,0,0,0.85);
+      color: #fff;
+      padding: 14px 28px;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      z-index: 100;
+      transition: transform 0.3s ease;
+      backdrop-filter: blur(10px);
+    }
+
+    #toast.show { transform: translateX(-50%) translateY(0); }
+
+    .footer { margin-top: 24px; font-size: 0.75rem; opacity: 0.4; text-align: center; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="particles"></div>
+
+    <section id="intro-screen" class="screen active">
+      <div class="title">나의 인생 그래프</div>
+      <div class="subtitle">이름과 생년월일을 입력하고<br>나의 인생 곡선을 확인하세요!</div>
+      <div class="input-group">
+        <input type="text" id="name-input" class="text-input" placeholder="이름을 입력하세요" maxlength="20" autocomplete="off">
+      </div>
+      <div class="input-group">
+        <div class="input-label">생년월일</div>
+        <div class="birthday-row">
+          <input type="text" id="birth-year" class="text-input year" placeholder="년(YYYY)" maxlength="4" inputmode="numeric" autocomplete="off">
+          <input type="text" id="birth-month" class="text-input" placeholder="월(MM)" maxlength="2" inputmode="numeric" autocomplete="off">
+          <input type="text" id="birth-day" class="text-input" placeholder="일(DD)" maxlength="2" inputmode="numeric" autocomplete="off">
+        </div>
+      </div>
+      <button id="draw-btn" class="draw-btn" disabled>인생 그래프 보기!</button>
+    </section>
+
+    <section id="drawing-screen" class="screen">
+      <div class="graph-anim-container" id="graph-anim-container">
+        <div class="graph-icon">📈</div>
+      </div>
+      <div class="drawing-text" id="drawing-text">인생의 흐름을 계산 중...</div>
+    </section>
+
+    <section id="result-screen" class="screen">
+      <div class="shared-banner" id="shared-banner" style="display:none;">
+        📈 나도 내 인생 그래프 보기! 📈
+      </div>
+      <div class="result-header">
+        <div class="result-name" id="result-name"></div>
+        <div class="grade-label">인생 운세 등급</div>
+        <div class="result-grade" id="result-grade"></div>
+      </div>
+      <div class="graph-container">
+        <canvas id="life-canvas" width="440" height="240"></canvas>
+      </div>
+      <div class="cards-grid" id="cards-grid"></div>
+      <div class="btn-group">
+        <button class="share-btn" id="share-btn">🔗 링크 복사하기</button>
+        <button class="retry-btn" id="retry-btn">🔄 다시 보기</button>
+      </div>
+      <div class="footer">나의 인생 그래프</div>
+    </section>
+
+    <div id="toast"></div>
+  </div>
+
+  <script>
+    const PHASE_KEYWORDS_YOUNG = [
+      "탐험의 시기", "도전의 시작", "성장의 기반", "자아 발견", "무한 가능성",
+      "열정 폭발", "꿈을 키우는 때", "배움의 황금기"
+    ];
+    const PHASE_KEYWORDS_MID = [
+      "도약의 시기", "결실의 때", "안정과 성장", "빛나는 전성기", "열매를 맺는 시기",
+      "실력 발휘", "커리어 전성기", "인생의 전환점"
+    ];
+    const PHASE_KEYWORDS_LATE = [
+      "풍요의 시기", "지혜의 계절", "여유와 행복", "깊어지는 삶", "원숙한 시간",
+      "평온한 성취", "인생의 꽃", "풍성한 수확"
+    ];
+
+    const PHASE_DESCS_YOUNG = [
+      "새로운 경험이 인생을 바꿔요",
+      "도전을 두려워하지 마세요",
+      "이 시기의 노력이 미래를 만들어요",
+      "호기심을 따라가면 길이 열려요",
+      "실패도 소중한 자산이 돼요",
+      "만나는 사람들이 인생의 보물이에요",
+      "배움에 투자하면 큰 보상이 와요",
+      "자신을 믿고 앞으로 나아가세요"
+    ];
+    const PHASE_DESCS_MID = [
+      "쌓아온 실력이 빛을 발해요",
+      "중요한 기회가 찾아와요",
+      "리더십을 발휘할 때예요",
+      "인생의 터닝 포인트가 될 거예요",
+      "안정 속에서 새로운 도전을 해요",
+      "가족과 함께하는 행복이 커져요",
+      "재정적으로 여유로워지는 시기예요",
+      "숨겨진 재능이 꽃을 피워요"
+    ];
+    const PHASE_DESCS_LATE = [
+      "여유롭게 삶을 즐기세요",
+      "지혜로운 조언자가 돼요",
+      "평온 속에서 행복을 찾아요",
+      "소중한 관계가 더 깊어져요",
+      "인생의 아름다움을 만끽해요",
+      "건강하고 활기찬 시간이에요",
+      "주변에 사랑을 나누는 시기예요",
+      "풍요로운 결실을 맺어요"
+    ];
+
+    const LIFE_SUMMARIES = [
+      "꾸준히 우상향하는 성공 인생!",
+      "역경을 딛고 빛나는 역전의 아이콘!",
+      "안정 속에서 꽃피는 행복한 인생!",
+      "도전과 성취가 가득한 드라마틱한 삶!",
+      "사랑과 행운이 함께하는 축복받은 인생!",
+      "늦게 피는 꽃이 가장 아름다운 인생!",
+      "매 순간 빛나는 찬란한 인생!",
+      "지혜와 용기로 완성하는 멋진 인생!",
+      "따뜻한 인연이 이끄는 행복한 여정!",
+      "꿈을 현실로 만드는 열정의 인생!",
+      "웃음이 끊이지 않는 유쾌한 인생!",
+      "끊임없이 성장하는 영원한 청춘!"
+    ];
+
+    const DRAWING_TEXTS = [
+      "인생의 흐름을 계산 중...",
+      "운명의 그래프를 그리는 중...",
+      "인생 곡선을 분석 중...",
+      "당신의 여정을 펼치는 중..."
+    ];
+
+    function hashName(name) {
+      let hash = 5381;
+      for (let i = 0; i < name.length; i++) {
+        hash = ((hash << 5) + hash) + name.charCodeAt(i);
+        hash = hash & hash;
+      }
+      return Math.abs(hash);
+    }
+
+    function seededRandom(seed) {
+      return function() {
+        seed |= 0;
+        seed = seed + 0x6D2B79F5 | 0;
+        let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      };
+    }
+
+    function generateResult(name, birthday) {
+      const rng = seededRandom(hashName(name + (birthday || '')));
+
+      // Generate 8 data points for ages 10-80
+      const points = [];
+      let total = 0;
+      for (let i = 0; i < 8; i++) {
+        const score = Math.floor(rng() * 45) + 50; // 50-94
+        points.push(score);
+        total += score;
+      }
+
+      const avg = total / points.length;
+      let grade;
+      if (avg >= 80) grade = 'S급 대운';
+      else if (avg >= 70) grade = 'A+ 순탄';
+      else if (avg >= 60) grade = 'A 성장형';
+      else grade = 'B+ 역전형';
+
+      // Find peak decade
+      let peakIdx = 0;
+      for (let i = 1; i < points.length; i++) {
+        if (points[i] > points[peakIdx]) peakIdx = i;
+      }
+      const peakAge = (peakIdx + 1) * 10;
+
+      // Phase cards
+      const cards = [];
+
+      const ykw = PHASE_KEYWORDS_YOUNG[Math.floor(rng() * PHASE_KEYWORDS_YOUNG.length)];
+      const ydesc = PHASE_DESCS_YOUNG[Math.floor(rng() * PHASE_DESCS_YOUNG.length)];
+      cards.push({ emoji: '🌱', title: '10~20대', keyword: ykw, desc: ydesc });
+
+      const mkw = PHASE_KEYWORDS_MID[Math.floor(rng() * PHASE_KEYWORDS_MID.length)];
+      const mdesc = PHASE_DESCS_MID[Math.floor(rng() * PHASE_DESCS_MID.length)];
+      cards.push({ emoji: '🔥', title: '30~40대', keyword: mkw, desc: mdesc });
+
+      const lkw = PHASE_KEYWORDS_LATE[Math.floor(rng() * PHASE_KEYWORDS_LATE.length)];
+      const ldesc = PHASE_DESCS_LATE[Math.floor(rng() * PHASE_DESCS_LATE.length)];
+      cards.push({ emoji: '🌻', title: '50~60대', keyword: lkw, desc: ldesc });
+
+      cards.push({ emoji: '👑', title: '인생 전성기', keyword: `${peakAge}대`, desc: `${peakAge}대에 인생의 최고점을 맞이해요!`, highlight: true });
+
+      const summary = LIFE_SUMMARIES[Math.floor(rng() * LIFE_SUMMARIES.length)];
+      cards.push({ emoji: '📝', title: '인생 한줄 요약', keyword: summary, desc: '', fullWidth: true });
+
+      return { points, grade, cards, peakIdx, avgScore: Math.round(avg) };
+    }
+
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => document.querySelectorAll(sel);
+
+    function showScreen(id) {
+      $$('.screen').forEach(s => s.classList.remove('active'));
+      $(`#${id}`).classList.add('active');
+    }
+
+    function showToast(msg) {
+      const toast = $('#toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+    function createParticles() {
+      const emojis = ['📈', '⭐', '🎯', '🏆', '💫', '🌟'];
+      const container = $('#particles');
+      for (let i = 0; i < 15; i++) {
+        const span = document.createElement('span');
+        span.className = 'particle';
+        span.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+        span.style.left = Math.random() * 100 + 'vw';
+        span.style.animationDuration = (8 + Math.random() * 12) + 's';
+        span.style.animationDelay = (Math.random() * 10) + 's';
+        span.style.fontSize = (16 + Math.random() * 14) + 'px';
+        container.appendChild(span);
+      }
+    }
+
+    function createSparkles(container) {
+      for (let i = 0; i < 16; i++) {
+        const sparkle = document.createElement('div');
+        sparkle.className = 'sparkle';
+        const angle = (i / 16) * Math.PI * 2;
+        const distance = 50 + Math.random() * 30;
+        const tx = Math.cos(angle) * distance;
+        const ty = Math.sin(angle) * distance;
+        sparkle.style.left = '50%';
+        sparkle.style.top = '50%';
+        sparkle.style.width = (4 + Math.random() * 6) + 'px';
+        sparkle.style.height = sparkle.style.width;
+        sparkle.style.background = ['#ff6b6b', '#ffd700', '#ee5a24', '#fff', '#f093fb'][Math.floor(Math.random() * 5)];
+        sparkle.animate([
+          { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
+          { transform: `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px)) scale(0)`, opacity: 0 }
+        ], { duration: 800, easing: 'cubic-bezier(0, 0.5, 0.5, 1)', fill: 'forwards' });
+        container.appendChild(sparkle);
+      }
+    }
+
+    // ============ Canvas Graph ============
+    function drawLifeGraph(canvas, points, peakIdx) {
+      const ctx = canvas.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const w = rect.width - 32;
+      const h = 220;
+
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+      ctx.scale(dpr, dpr);
+
+      const padLeft = 30;
+      const padRight = 20;
+      const padTop = 20;
+      const padBottom = 35;
+      const graphW = w - padLeft - padRight;
+      const graphH = h - padTop - padBottom;
+
+      const ages = [10, 20, 30, 40, 50, 60, 70, 80];
+      const coords = points.map((score, i) => ({
+        x: padLeft + (i / (points.length - 1)) * graphW,
+        y: padTop + graphH - ((score - 30) / 70) * graphH
+      }));
+
+      // Animated drawing
+      let progress = 0;
+      const totalFrames = 60;
+
+      function animate() {
+        progress++;
+        const t = Math.min(progress / totalFrames, 1);
+        const eased = 1 - Math.pow(1 - t, 3);
+
+        ctx.clearRect(0, 0, w, h);
+
+        // Grid lines
+        ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i < 5; i++) {
+          const y = padTop + (i / 4) * graphH;
+          ctx.beginPath();
+          ctx.moveTo(padLeft, y);
+          ctx.lineTo(w - padRight, y);
+          ctx.stroke();
+        }
+
+        // Age labels
+        ctx.fillStyle = 'rgba(0,0,0,0.45)';
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'center';
+        ages.forEach((age, i) => {
+          ctx.fillText(age + '대', coords[i].x, h - 10);
+        });
+
+        // Draw curve up to current progress
+        const drawCount = Math.floor(eased * (coords.length - 1));
+        const subProgress = (eased * (coords.length - 1)) - drawCount;
+
+        if (drawCount < 1 && eased < 1 / (coords.length - 1)) {
+          if (progress < totalFrames) requestAnimationFrame(animate);
+          return;
+        }
+
+        // Build visible points
+        const visibleCoords = [];
+        for (let i = 0; i <= drawCount && i < coords.length; i++) {
+          visibleCoords.push(coords[i]);
+        }
+        if (drawCount < coords.length - 1) {
+          const c = coords[drawCount];
+          const n = coords[drawCount + 1];
+          visibleCoords.push({
+            x: c.x + (n.x - c.x) * subProgress,
+            y: c.y + (n.y - c.y) * subProgress
+          });
+        }
+
+        if (visibleCoords.length < 2) {
+          if (progress < totalFrames) requestAnimationFrame(animate);
+          return;
+        }
+
+        // Gradient fill under curve
+        const gradient = ctx.createLinearGradient(0, padTop, 0, padTop + graphH);
+        gradient.addColorStop(0, 'rgba(255,107,107,0.35)');
+        gradient.addColorStop(1, 'rgba(255,107,107,0.02)');
+
+        ctx.beginPath();
+        ctx.moveTo(visibleCoords[0].x, padTop + graphH);
+        ctx.lineTo(visibleCoords[0].x, visibleCoords[0].y);
+
+        for (let i = 1; i < visibleCoords.length; i++) {
+          const prev = visibleCoords[i - 1];
+          const cur = visibleCoords[i];
+          const cpx = (prev.x + cur.x) / 2;
+          ctx.bezierCurveTo(cpx, prev.y, cpx, cur.y, cur.x, cur.y);
+        }
+
+        const lastVisible = visibleCoords[visibleCoords.length - 1];
+        ctx.lineTo(lastVisible.x, padTop + graphH);
+        ctx.closePath();
+        ctx.fillStyle = gradient;
+        ctx.fill();
+
+        // Draw line
+        ctx.beginPath();
+        ctx.moveTo(visibleCoords[0].x, visibleCoords[0].y);
+        for (let i = 1; i < visibleCoords.length; i++) {
+          const prev = visibleCoords[i - 1];
+          const cur = visibleCoords[i];
+          const cpx = (prev.x + cur.x) / 2;
+          ctx.bezierCurveTo(cpx, prev.y, cpx, cur.y, cur.x, cur.y);
+        }
+        ctx.strokeStyle = '#ff6b6b';
+        ctx.lineWidth = 3;
+        ctx.shadowColor = 'rgba(255,107,107,0.5)';
+        ctx.shadowBlur = 8;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // Draw dots + scores
+        const dotsToShow = Math.min(drawCount + 1, coords.length);
+        for (let i = 0; i < dotsToShow; i++) {
+          const c = coords[i];
+          const isPeak = i === peakIdx;
+
+          ctx.beginPath();
+          ctx.arc(c.x, c.y, isPeak ? 7 : 5, 0, Math.PI * 2);
+          ctx.fillStyle = isPeak ? '#ffd700' : '#fff';
+          ctx.strokeStyle = isPeak ? '#ee5a24' : '#ff6b6b';
+          ctx.lineWidth = 2;
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = isPeak ? '#d63384' : 'rgba(0,0,0,0.55)';
+          ctx.font = isPeak ? 'bold 12px sans-serif' : '11px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(points[i], c.x, c.y - 12);
+        }
+
+        if (progress < totalFrames) {
+          requestAnimationFrame(animate);
+        }
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    function startDrawing(name, birthday) {
+      showScreen('drawing-screen');
+      const textEl = $('#drawing-text');
+      let textIndex = 0;
+
+      const textInterval = setInterval(() => {
+        textIndex = (textIndex + 1) % DRAWING_TEXTS.length;
+        textEl.textContent = DRAWING_TEXTS[textIndex];
+        textEl.style.animation = 'none';
+        textEl.offsetHeight;
+        textEl.style.animation = 'fadeInOut 0.5s ease';
+      }, 600);
+
+      setTimeout(() => createSparkles($('#graph-anim-container')), 1500);
+
+      setTimeout(() => {
+        clearInterval(textInterval);
+        const result = generateResult(name, birthday);
+        showResults(name, result);
+      }, 2500);
+    }
+
+    function showResults(name, result) {
+      showScreen('result-screen');
+
+      $('#result-name').textContent = `${name}님의 인생 그래프`;
+      $('#result-grade').textContent = result.grade;
+
+      // Draw graph after screen is visible
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          drawLifeGraph($('#life-canvas'), result.points, result.peakIdx);
+        }, 200);
+      });
+
+      const grid = $('#cards-grid');
+      grid.innerHTML = '';
+
+      result.cards.forEach((card, i) => {
+        const el = document.createElement('div');
+        el.className = `luck-card ${card.fullWidth ? 'full-width' : ''} ${card.highlight ? 'highlight' : ''}`;
+        el.style.animationDelay = `${(i + 1) * 0.15}s`;
+
+        el.innerHTML = `
+          <div class="card-emoji">${card.emoji}</div>
+          <div class="card-title">${card.title}</div>
+          <div class="card-score">${card.keyword}</div>
+          ${card.desc ? `<div class="card-desc">${card.desc}</div>` : ''}
+        `;
+        grid.appendChild(el);
+      });
+
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('name')) {
+        $('#shared-banner').style.display = 'block';
+      }
+    }
+
+    function copyShareLink(name, birthday) {
+      let url = `${window.location.origin}${window.location.pathname}?name=${encodeURIComponent(name)}`;
+      if (birthday) url += `&birth=${encodeURIComponent(birthday)}`;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(() => showToast('링크가 복사되었습니다!')).catch(() => fallbackCopy(url));
+      } else {
+        fallbackCopy(url);
+      }
+    }
+
+    function fallbackCopy(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); showToast('링크가 복사되었습니다!'); }
+      catch { showToast('링크 복사에 실패했습니다'); }
+      document.body.removeChild(ta);
+    }
+
+    let currentName = '';
+    let currentBirthday = '';
+
+    function getBirthday() {
+      const y = $('#birth-year').value.trim();
+      const m = $('#birth-month').value.trim().padStart(2, '0');
+      const d = $('#birth-day').value.trim().padStart(2, '0');
+      if (y && m && d) return `${y}${m}${d}`;
+      return '';
+    }
+
+    function checkFormValid() {
+      const name = $('#name-input').value.trim();
+      const y = $('#birth-year').value.trim();
+      const m = $('#birth-month').value.trim();
+      const d = $('#birth-day').value.trim();
+      $('#draw-btn').disabled = !(name && y.length === 4 && m && d);
+    }
+
+    function init() {
+      createParticles();
+
+      const nameInput = $('#name-input');
+      const drawBtn = $('#draw-btn');
+      const birthInputs = ['#birth-year', '#birth-month', '#birth-day'];
+
+      nameInput.addEventListener('input', checkFormValid);
+      birthInputs.forEach(sel => {
+        $(sel).addEventListener('input', function() {
+          const maxLen = parseInt(this.maxLength);
+          if (this.value.length >= maxLen) {
+            const idx = birthInputs.indexOf(sel);
+            if (idx < birthInputs.length - 1) $(birthInputs[idx + 1]).focus();
+          }
+          checkFormValid();
+        });
+      });
+
+      document.querySelectorAll('#intro-screen input').forEach(input => {
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && !drawBtn.disabled) startDraw();
+        });
+      });
+
+      drawBtn.addEventListener('click', startDraw);
+
+      function startDraw() {
+        currentName = nameInput.value.trim();
+        currentBirthday = getBirthday();
+        if (!currentName) return;
+        startDrawing(currentName, currentBirthday);
+      }
+
+      $('#share-btn').addEventListener('click', () => copyShareLink(currentName, currentBirthday));
+
+      $('#retry-btn').addEventListener('click', () => {
+        currentName = '';
+        currentBirthday = '';
+        nameInput.value = '';
+        birthInputs.forEach(sel => $(sel).value = '');
+        drawBtn.disabled = true;
+        showScreen('intro-screen');
+        nameInput.focus();
+      });
+
+      $('#shared-banner').addEventListener('click', () => {
+        window.history.replaceState({}, '', window.location.pathname);
+        currentName = '';
+        currentBirthday = '';
+        nameInput.value = '';
+        birthInputs.forEach(sel => $(sel).value = '');
+        drawBtn.disabled = true;
+        $('#shared-banner').style.display = 'none';
+        showScreen('intro-screen');
+        nameInput.focus();
+      });
+
+      const params = new URLSearchParams(window.location.search);
+      const sharedName = params.get('name');
+      const sharedBirth = params.get('birth') || '';
+      if (sharedName) {
+        currentName = sharedName;
+        currentBirthday = sharedBirth;
+        startDrawing(sharedName, sharedBirth);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

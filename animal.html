@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>나를 닮은 동물 찾기</title>
+  <meta property="og:title" content="나를 닮은 동물 찾기">
+  <meta property="og:description" content="내 이름으로 나를 닮은 동물을 찾아보세요!">
+  <meta property="og:type" content="website">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #134e5e 0%, #71b280 100%);
+      color: #fff;
+      overflow-x: hidden;
+    }
+
+    #app {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 20px 40px;
+      position: relative;
+    }
+
+    #app:has(#result-screen.active) {
+      justify-content: flex-start;
+      padding-top: 40px;
+    }
+
+    .particle {
+      position: fixed;
+      font-size: 20px;
+      pointer-events: none;
+      z-index: 0;
+      animation: floatUp linear infinite;
+      opacity: 0.6;
+    }
+
+    @keyframes floatUp {
+      0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+      10% { opacity: 0.6; }
+      90% { opacity: 0.6; }
+      100% { transform: translateY(-10vh) rotate(360deg); opacity: 0; }
+    }
+
+    .screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 480px;
+      z-index: 1;
+    }
+
+    .screen.active { display: flex; }
+
+    .title {
+      font-size: 2.2rem;
+      font-weight: 800;
+      text-align: center;
+      margin-bottom: 12px;
+      background: linear-gradient(to right, #fff, #a8e6cf, #fff);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmer 3s linear infinite;
+    }
+
+    @keyframes shimmer {
+      0% { background-position: -200% center; }
+      100% { background-position: 200% center; }
+    }
+
+    .subtitle {
+      font-size: 1rem;
+      opacity: 0.85;
+      text-align: center;
+      margin-bottom: 40px;
+      line-height: 1.5;
+    }
+
+    .input-group { width: 100%; margin-bottom: 16px; }
+
+    .text-input {
+      width: 100%;
+      padding: 16px 20px;
+      font-size: 1.1rem;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(10px);
+      color: #fff;
+      text-align: center;
+      outline: none;
+      transition: border-color 0.3s, background 0.3s;
+      font-family: inherit;
+    }
+
+    .text-input::placeholder { color: rgba(255,255,255,0.5); }
+    .text-input:focus {
+      border-color: rgba(255,255,255,0.6);
+      background: rgba(255,255,255,0.25);
+    }
+
+    .input-label { font-size: 0.85rem; opacity: 0.7; margin-bottom: 8px; text-align: center; }
+
+    .birthday-row { display: flex; gap: 8px; }
+    .birthday-row .text-input { flex: 1; padding: 14px 8px; font-size: 1rem; }
+    .birthday-row .text-input.year { flex: 1.3; }
+
+    .draw-btn {
+      width: 100%;
+      padding: 18px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #ff9a56 0%, #ff6b6b 100%);
+      color: #fff;
+      cursor: pointer;
+      font-family: inherit;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 20px rgba(255,154,86,0.4);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .draw-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 25px rgba(255,154,86,0.6); }
+    .draw-btn:active { transform: translateY(0); }
+    .draw-btn:disabled { opacity: 0.5; cursor: not-allowed; animation: none; }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+    }
+
+    #drawing-screen { justify-content: center; min-height: 60vh; }
+
+    .egg-container {
+      position: relative;
+      width: 140px;
+      height: 170px;
+      margin-bottom: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .egg {
+      font-size: 5rem;
+      animation: eggWobble 0.5s ease-in-out infinite;
+    }
+
+    @keyframes eggWobble {
+      0%, 100% { transform: rotate(-5deg); }
+      50% { transform: rotate(5deg); }
+    }
+
+    .egg.cracking {
+      animation: eggCrack 0.3s ease forwards;
+    }
+
+    @keyframes eggCrack {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(0); opacity: 0; }
+    }
+
+    .drawing-text {
+      font-size: 1.1rem;
+      font-weight: 600;
+      animation: fadeInOut 0.5s ease;
+    }
+
+    @keyframes fadeInOut {
+      0% { opacity: 0; transform: translateY(5px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    .sparkle {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #a8e6cf;
+      pointer-events: none;
+    }
+
+    .shared-banner {
+      width: 100%;
+      padding: 14px;
+      background: rgba(255,255,255,0.2);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      text-align: center;
+      margin-bottom: 20px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.3s;
+      border: 1px solid rgba(255,255,255,0.3);
+    }
+
+    .shared-banner:hover { background: rgba(255,255,255,0.3); }
+
+    .result-header {
+      text-align: center;
+      margin-bottom: 24px;
+      animation: slideDown 0.5s ease;
+    }
+
+    @keyframes slideDown {
+      0% { opacity: 0; transform: translateY(-20px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-name { font-size: 1.3rem; font-weight: 700; margin-bottom: 8px; }
+
+    .result-animal-emoji {
+      font-size: 4rem;
+      margin: 12px 0;
+      animation: animalBounce 1s ease-in-out infinite;
+    }
+
+    @keyframes animalBounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    .result-animal-name {
+      font-size: 1.8rem;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .result-animal-desc {
+      font-size: 0.95rem;
+      opacity: 0.9;
+      line-height: 1.6;
+      text-align: center;
+      padding: 0 10px;
+      margin-bottom: 12px;
+    }
+
+    .result-grade {
+      display: inline-block;
+      font-size: 2rem;
+      font-weight: 800;
+      padding: 8px 24px;
+      background: rgba(255,255,255,0.2);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      border: 2px solid rgba(255,255,255,0.3);
+      margin-top: 8px;
+    }
+
+    .grade-label { font-size: 0.85rem; opacity: 0.8; margin-top: 6px; }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      width: 100%;
+      margin-bottom: 24px;
+    }
+
+    .luck-card {
+      background: rgba(255,255,255,0.12);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.2);
+      padding: 16px;
+      opacity: 0;
+      transform: translateY(20px);
+      animation: cardAppear 0.4s ease forwards;
+    }
+
+    @keyframes cardAppear { to { opacity: 1; transform: translateY(0); } }
+
+    .card-emoji { font-size: 1.8rem; margin-bottom: 6px; }
+    .card-title { font-size: 0.85rem; font-weight: 600; opacity: 0.8; margin-bottom: 8px; }
+
+    .score-bar {
+      width: 100%;
+      height: 8px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    .score-fill {
+      height: 100%;
+      border-radius: 4px;
+      width: 0%;
+      transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .score-fill.sociability { background: linear-gradient(90deg, #ff9a56, #ff6b6b); }
+    .score-fill.independence { background: linear-gradient(90deg, #667eea, #764ba2); }
+    .score-fill.curiosity { background: linear-gradient(90deg, #43e97b, #38f9d7); }
+    .score-fill.loyalty { background: linear-gradient(90deg, #f093fb, #f5576c); }
+    .score-fill.adaptability { background: linear-gradient(90deg, #ffd700, #ff9a00); }
+
+    .card-score { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
+    .card-desc { font-size: 0.8rem; opacity: 0.85; line-height: 1.4; }
+
+    .luck-card.compat-card .card-score { font-size: 0.95rem; }
+
+    .btn-group { display: flex; gap: 12px; width: 100%; }
+
+    .share-btn, .retry-btn {
+      flex: 1;
+      padding: 16px;
+      font-size: 1rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 16px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .share-btn {
+      background: linear-gradient(135deg, #ff9a56 0%, #ff6b6b 100%);
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(255,154,86,0.4);
+    }
+
+    .retry-btn {
+      background: rgba(255,255,255,0.2);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.3);
+      backdrop-filter: blur(10px);
+    }
+
+    .share-btn:hover, .retry-btn:hover { transform: translateY(-2px); }
+    .share-btn:active, .retry-btn:active { transform: translateY(0); }
+
+    #toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: rgba(0,0,0,0.85);
+      color: #fff;
+      padding: 14px 28px;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      z-index: 100;
+      transition: transform 0.3s ease;
+      backdrop-filter: blur(10px);
+    }
+
+    #toast.show { transform: translateX(-50%) translateY(0); }
+
+    .footer { margin-top: 24px; font-size: 0.75rem; opacity: 0.5; text-align: center; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="particles"></div>
+
+    <section id="intro-screen" class="screen active">
+      <div class="title">나를 닮은 동물 찾기</div>
+      <div class="subtitle">이름과 생년월일을 입력하고<br>나의 영혼 동물을 만나보세요!</div>
+      <div class="input-group">
+        <input type="text" id="name-input" class="text-input" placeholder="이름을 입력하세요" maxlength="20" autocomplete="off">
+      </div>
+      <div class="input-group">
+        <div class="input-label">생년월일</div>
+        <div class="birthday-row">
+          <input type="text" id="birth-year" class="text-input year" placeholder="년(YYYY)" maxlength="4" inputmode="numeric" autocomplete="off">
+          <input type="text" id="birth-month" class="text-input" placeholder="월(MM)" maxlength="2" inputmode="numeric" autocomplete="off">
+          <input type="text" id="birth-day" class="text-input" placeholder="일(DD)" maxlength="2" inputmode="numeric" autocomplete="off">
+        </div>
+      </div>
+      <button id="draw-btn" class="draw-btn" disabled>동물 찾기!</button>
+    </section>
+
+    <section id="drawing-screen" class="screen">
+      <div class="egg-container" id="egg-container">
+        <div class="egg" id="egg">🥚</div>
+      </div>
+      <div class="drawing-text" id="drawing-text">숲속을 탐험하는 중...</div>
+    </section>
+
+    <section id="result-screen" class="screen">
+      <div class="shared-banner" id="shared-banner" style="display:none;">
+        🐾 나도 내 동물 찾아보기! 🐾
+      </div>
+      <div class="result-header">
+        <div class="result-name" id="result-name"></div>
+        <div class="result-animal-emoji" id="result-animal-emoji"></div>
+        <div class="result-animal-name" id="result-animal-name"></div>
+        <div class="result-animal-desc" id="result-animal-desc"></div>
+        <div class="grade-label">궁합 점수</div>
+        <div class="result-grade" id="result-grade"></div>
+      </div>
+      <div class="cards-grid" id="cards-grid"></div>
+      <div class="btn-group">
+        <button class="share-btn" id="share-btn">🔗 링크 복사하기</button>
+        <button class="retry-btn" id="retry-btn">🔄 다시 찾기</button>
+      </div>
+      <div class="footer">나를 닮은 동물 찾기</div>
+    </section>
+
+    <div id="toast"></div>
+  </div>
+
+  <script>
+    const ANIMALS = [
+      { name: '고양이', emoji: '🐱', desc: '독립적이면서도 사랑스러운 당신! 혼자만의 시간을 즐기지만, 마음을 연 사람에게는 한없이 다정해요. 도도한 매력이 넘칩니다.' },
+      { name: '강아지', emoji: '🐶', desc: '충성스럽고 밝은 에너지의 소유자! 주변 사람들을 행복하게 만드는 재주가 있어요. 사랑을 받으면 두 배로 돌려줘요.' },
+      { name: '여우', emoji: '🦊', desc: '영리하고 눈치 빠른 당신! 어떤 상황에서도 유연하게 대처하는 능력이 탁월해요. 신비로운 매력이 있어요.' },
+      { name: '늑대', emoji: '🐺', desc: '강한 의지와 리더십의 소유자! 가족과 친구를 지키는 데 누구보다 헌신적이에요. 카리스마가 넘쳐요.' },
+      { name: '곰', emoji: '🐻', desc: '겉은 무뚝뚝하지만 속은 따뜻한 당신! 든든한 존재감으로 주변에 안정을 줘요. 은근히 귀여운 면이 있어요.' },
+      { name: '토끼', emoji: '🐰', desc: '귀엽고 순수한 매력의 소유자! 세심하고 감수성이 풍부해요. 빠른 판단력으로 위기를 잘 넘겨요.' },
+      { name: '사슴', emoji: '🦌', desc: '우아하고 품격 있는 당신! 조용하지만 강한 내면을 가지고 있어요. 자연을 사랑하는 평화로운 영혼이에요.' },
+      { name: '독수리', emoji: '🦅', desc: '넓은 시야와 높은 이상을 가진 당신! 큰 그림을 보는 능력이 탁월해요. 자유로운 영혼의 소유자예요.' },
+      { name: '돌고래', emoji: '🐬', desc: '똑똑하고 사교적인 당신! 어디서든 분위기 메이커 역할을 해요. 밝은 에너지로 주변을 환하게 만들어요.' },
+      { name: '호랑이', emoji: '🐯', desc: '용감하고 당당한 당신! 도전을 두려워하지 않는 강한 정신력이 있어요. 타고난 왕의 기질이 있어요.' },
+      { name: '펭귄', emoji: '🐧', desc: '성실하고 가정적인 당신! 어떤 환경에서도 적응하는 놀라운 인내심이 있어요. 귀여움으로 모두를 사로잡아요.' },
+      { name: '수달', emoji: '🦦', desc: '장난기 가득하고 사랑스러운 당신! 손재주가 좋고 협동심이 뛰어나요. 함께하면 즐거운 사람이에요.' },
+      { name: '올빼미', emoji: '🦉', desc: '지혜롭고 관찰력이 뛰어난 당신! 밤에 더 빛나는 창의력을 가지고 있어요. 신비로운 분위기가 매력이에요.' },
+      { name: '나비', emoji: '🦋', desc: '아름답고 자유로운 영혼! 변화를 두려워하지 않고 끊임없이 성장해요. 주변에 기쁨을 퍼뜨리는 존재예요.' },
+      { name: '사자', emoji: '🦁', desc: '자신감 넘치고 당당한 당신! 타고난 리더십으로 사람들을 이끌어요. 정의감이 강하고 의리가 있어요.' },
+      { name: '판다', emoji: '🐼', desc: '느긋하고 평화를 사랑하는 당신! 귀여운 외모와 달리 의외로 강한 면이 있어요. 먹는 것을 사랑해요.' },
+      { name: '햄스터', emoji: '🐹', desc: '부지런하고 알뜰한 당신! 작지만 에너지가 넘치고, 목표를 향해 열심히 달려요. 볼에 가득한 행복이 매력!' },
+      { name: '카멜레온', emoji: '🦎', desc: '적응력 만점인 당신! 어떤 환경에서도 자연스럽게 녹아드는 능력이 있어요. 다채로운 매력의 소유자예요.' },
+      { name: '백조', emoji: '🦢', desc: '우아하고 기품 있는 당신! 겉으로는 평온해 보이지만 수면 아래에서 끊임없이 노력해요. 아름다움과 강인함의 조화.' },
+      { name: '코알라', emoji: '🐨', desc: '느긋하고 마이페이스인 당신! 스트레스를 잘 받지 않는 대범한 성격이에요. 안기면 떨어지지 않는 끈기도 있어요.' },
+    ];
+
+    const COMPATIBLE_ANIMALS = {
+      '고양이': { name: '강아지', emoji: '🐶' },
+      '강아지': { name: '고양이', emoji: '🐱' },
+      '여우': { name: '올빼미', emoji: '🦉' },
+      '늑대': { name: '독수리', emoji: '🦅' },
+      '곰': { name: '토끼', emoji: '🐰' },
+      '토끼': { name: '곰', emoji: '🐻' },
+      '사슴': { name: '나비', emoji: '🦋' },
+      '독수리': { name: '늑대', emoji: '🐺' },
+      '돌고래': { name: '수달', emoji: '🦦' },
+      '호랑이': { name: '사자', emoji: '🦁' },
+      '펭귄': { name: '판다', emoji: '🐼' },
+      '수달': { name: '돌고래', emoji: '🐬' },
+      '올빼미': { name: '여우', emoji: '🦊' },
+      '나비': { name: '사슴', emoji: '🦌' },
+      '사자': { name: '호랑이', emoji: '🐯' },
+      '판다': { name: '코알라', emoji: '🐨' },
+      '햄스터': { name: '펭귄', emoji: '🐧' },
+      '카멜레온': { name: '백조', emoji: '🦢' },
+      '백조': { name: '카멜레온', emoji: '🦎' },
+      '코알라': { name: '판다', emoji: '🐼' },
+    };
+
+    const CATEGORIES = [
+      { key: 'sociability', name: '사교성', emoji: '🎉', colorClass: 'sociability' },
+      { key: 'independence', name: '독립성', emoji: '🏔️', colorClass: 'independence' },
+      { key: 'curiosity', name: '호기심', emoji: '🔍', colorClass: 'curiosity' },
+      { key: 'loyalty', name: '충성도', emoji: '💎', colorClass: 'loyalty' },
+      { key: 'adaptability', name: '적응력', emoji: '🌈', colorClass: 'adaptability' },
+    ];
+
+    const DESCRIPTIONS = {
+      sociability: [
+        "어디서든 분위기를 밝히는 인기인이에요",
+        "새로운 만남을 즐기는 타입이에요",
+        "사람들과 함께할 때 에너지가 충전돼요",
+        "소규모 모임에서 더 빛나는 스타일이에요",
+        "따뜻한 말 한마디로 마음을 여는 재주가 있어요",
+        "처음 만난 사람도 편하게 해주는 능력이 있어요",
+        "친구들 사이에서 연결고리 역할을 해요",
+        "웃음으로 사람들을 사로잡아요"
+      ],
+      independence: [
+        "혼자만의 시간이 꼭 필요한 타입이에요",
+        "자기만의 세계가 확고한 사람이에요",
+        "스스로 결정하고 책임지는 성격이에요",
+        "남에게 의지하지 않는 강한 자립심이 있어요",
+        "독립적이면서도 필요할 때 도움을 요청할 줄 알아요",
+        "자유로운 영혼으로 구속을 싫어해요",
+        "혼자서도 충분히 즐거운 사람이에요",
+        "자기 페이스를 잘 지키는 타입이에요"
+      ],
+      curiosity: [
+        "새로운 것에 대한 호기심이 가득해요",
+        "모르는 것을 그냥 지나치지 못해요",
+        "탐구정신이 강해 끝까지 파고들어요",
+        "다양한 분야에 관심이 많은 멀티 플레이어예요",
+        "질문이 많아 주변을 놀라게 해요",
+        "모험을 좋아하는 탐험가 기질이에요",
+        "새로운 경험에 항상 열려있어요",
+        "배움에 대한 열정이 대단해요"
+      ],
+      loyalty: [
+        "한번 마음을 주면 끝까지 함께해요",
+        "약속을 반드시 지키는 사람이에요",
+        "소중한 사람을 위해 뭐든 할 수 있어요",
+        "신뢰를 가장 중요하게 여기는 타입이에요",
+        "오래된 관계를 소중히 간직해요",
+        "배신이라는 단어와 거리가 먼 사람이에요",
+        "변함없는 마음이 가장 큰 장점이에요",
+        "든든한 버팀목 같은 존재예요"
+      ],
+      adaptability: [
+        "어떤 환경에서도 금방 적응해요",
+        "변화를 두려워하지 않는 유연함이 있어요",
+        "위기 상황에서 빛나는 대처 능력이에요",
+        "새로운 환경이 오히려 설레는 타입이에요",
+        "상황 판단이 빠르고 정확해요",
+        "다양한 사람들과 잘 어울려요",
+        "임기응변에 능한 사람이에요",
+        "변화의 바람을 즐기는 서퍼 같아요"
+      ]
+    };
+
+    const DRAWING_TEXTS = [
+      "숲속을 탐험하는 중...",
+      "동물 친구를 찾는 중...",
+      "영혼의 동물을 부르는 중...",
+      "인연의 동물이 다가오는 중..."
+    ];
+
+    function hashName(name) {
+      let hash = 5381;
+      for (let i = 0; i < name.length; i++) {
+        hash = ((hash << 5) + hash) + name.charCodeAt(i);
+        hash = hash & hash;
+      }
+      return Math.abs(hash);
+    }
+
+    function seededRandom(seed) {
+      return function() {
+        seed |= 0;
+        seed = seed + 0x6D2B79F5 | 0;
+        let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      };
+    }
+
+    function generateResult(name, birthday) {
+      const rng = seededRandom(hashName(name + (birthday || '')));
+      const results = [];
+      let totalScore = 0;
+
+      for (const cat of CATEGORIES) {
+        const score = Math.floor(rng() * 40) + 60;
+        const descIndex = Math.floor(rng() * DESCRIPTIONS[cat.key].length);
+        totalScore += score;
+        results.push({ ...cat, score, description: DESCRIPTIONS[cat.key][descIndex] });
+      }
+
+      const animalIndex = Math.floor(rng() * ANIMALS.length);
+      const animal = ANIMALS[animalIndex];
+      const compat = COMPATIBLE_ANIMALS[animal.name];
+      const compatScore = Math.floor(rng() * 20) + 80;
+
+      results.push({
+        key: 'compat', name: '궁합 동물', emoji: compat.emoji, colorClass: 'compat',
+        score: null, description: `${compat.name} ${compat.emoji}와(과) 궁합 ${compatScore}%!`
+      });
+
+      const avg = totalScore / CATEGORIES.length;
+      let grade = `${Math.round(avg)}점`;
+
+      return { results, grade, animal, avgScore: Math.round(avg) };
+    }
+
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => document.querySelectorAll(sel);
+
+    function showScreen(id) {
+      $$('.screen').forEach(s => s.classList.remove('active'));
+      $(`#${id}`).classList.add('active');
+    }
+
+    function showToast(msg) {
+      const toast = $('#toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+    function createParticles() {
+      const emojis = ['🐾', '🌿', '🦋', '🌺', '🍃', '🌸'];
+      const container = $('#particles');
+      for (let i = 0; i < 15; i++) {
+        const span = document.createElement('span');
+        span.className = 'particle';
+        span.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+        span.style.left = Math.random() * 100 + 'vw';
+        span.style.animationDuration = (8 + Math.random() * 12) + 's';
+        span.style.animationDelay = (Math.random() * 10) + 's';
+        span.style.fontSize = (16 + Math.random() * 14) + 'px';
+        container.appendChild(span);
+      }
+    }
+
+    function createSparkles(container) {
+      for (let i = 0; i < 16; i++) {
+        const sparkle = document.createElement('div');
+        sparkle.className = 'sparkle';
+        const angle = (i / 16) * Math.PI * 2;
+        const distance = 60 + Math.random() * 40;
+        const tx = Math.cos(angle) * distance;
+        const ty = Math.sin(angle) * distance;
+        sparkle.style.left = '50%';
+        sparkle.style.top = '50%';
+        sparkle.style.width = (4 + Math.random() * 6) + 'px';
+        sparkle.style.height = sparkle.style.width;
+        sparkle.style.background = ['#a8e6cf', '#ff9a56', '#ffd700', '#fff', '#88d8b0'][Math.floor(Math.random() * 5)];
+        sparkle.animate([
+          { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
+          { transform: `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px)) scale(0)`, opacity: 0 }
+        ], { duration: 800, easing: 'cubic-bezier(0, 0.5, 0.5, 1)', fill: 'forwards' });
+        container.appendChild(sparkle);
+      }
+    }
+
+    function startDrawing(name, birthday) {
+      showScreen('drawing-screen');
+      const egg = $('#egg');
+      egg.className = 'egg';
+      const textEl = $('#drawing-text');
+      let textIndex = 0;
+
+      const textInterval = setInterval(() => {
+        textIndex = (textIndex + 1) % DRAWING_TEXTS.length;
+        textEl.textContent = DRAWING_TEXTS[textIndex];
+        textEl.style.animation = 'none';
+        textEl.offsetHeight;
+        textEl.style.animation = 'fadeInOut 0.5s ease';
+      }, 600);
+
+      setTimeout(() => {
+        egg.classList.add('cracking');
+        createSparkles($('#egg-container'));
+      }, 1800);
+
+      setTimeout(() => {
+        clearInterval(textInterval);
+        const result = generateResult(name, birthday);
+        showResults(name, result);
+      }, 2500);
+    }
+
+    function showResults(name, result) {
+      showScreen('result-screen');
+
+      $('#result-name').textContent = `${name}님을 닮은 동물은...`;
+      $('#result-animal-emoji').textContent = result.animal.emoji;
+      $('#result-animal-name').textContent = result.animal.name;
+      $('#result-animal-desc').textContent = result.animal.desc;
+      $('#result-grade').textContent = result.grade;
+
+      const grid = $('#cards-grid');
+      grid.innerHTML = '';
+
+      result.results.forEach((item, i) => {
+        const card = document.createElement('div');
+        card.className = `luck-card ${item.key === 'compat' ? 'compat-card' : ''}`;
+        card.style.animationDelay = `${i * 0.1}s`;
+
+        if (item.score !== null) {
+          card.innerHTML = `
+            <div class="card-emoji">${item.emoji}</div>
+            <div class="card-title">${item.name}</div>
+            <div class="score-bar">
+              <div class="score-fill ${item.colorClass}" id="fill-${item.key}"></div>
+            </div>
+            <div class="card-score">${item.score}점</div>
+            <div class="card-desc">${item.description}</div>
+          `;
+        } else {
+          card.innerHTML = `
+            <div class="card-emoji">${item.emoji}</div>
+            <div class="card-title">${item.name}</div>
+            <div class="card-score">${item.description}</div>
+          `;
+        }
+        grid.appendChild(card);
+      });
+
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          result.results.forEach(item => {
+            if (item.score !== null) {
+              const fill = $(`#fill-${item.key}`);
+              if (fill) fill.style.width = item.score + '%';
+            }
+          });
+        }, 300);
+      });
+
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('name')) {
+        $('#shared-banner').style.display = 'block';
+      }
+    }
+
+    function copyShareLink(name, birthday) {
+      let url = `${window.location.origin}${window.location.pathname}?name=${encodeURIComponent(name)}`;
+      if (birthday) url += `&birth=${encodeURIComponent(birthday)}`;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(() => showToast('링크가 복사되었습니다!')).catch(() => fallbackCopy(url));
+      } else {
+        fallbackCopy(url);
+      }
+    }
+
+    function fallbackCopy(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); showToast('링크가 복사되었습니다!'); }
+      catch { showToast('링크 복사에 실패했습니다'); }
+      document.body.removeChild(ta);
+    }
+
+    let currentName = '';
+    let currentBirthday = '';
+
+    function getBirthday() {
+      const y = $('#birth-year').value.trim();
+      const m = $('#birth-month').value.trim().padStart(2, '0');
+      const d = $('#birth-day').value.trim().padStart(2, '0');
+      if (y && m && d) return `${y}${m}${d}`;
+      return '';
+    }
+
+    function checkFormValid() {
+      const name = $('#name-input').value.trim();
+      const y = $('#birth-year').value.trim();
+      const m = $('#birth-month').value.trim();
+      const d = $('#birth-day').value.trim();
+      $('#draw-btn').disabled = !(name && y.length === 4 && m && d);
+    }
+
+    function init() {
+      createParticles();
+
+      const nameInput = $('#name-input');
+      const drawBtn = $('#draw-btn');
+      const birthInputs = ['#birth-year', '#birth-month', '#birth-day'];
+
+      nameInput.addEventListener('input', checkFormValid);
+      birthInputs.forEach(sel => {
+        $(sel).addEventListener('input', function() {
+          const maxLen = parseInt(this.maxLength);
+          if (this.value.length >= maxLen) {
+            const idx = birthInputs.indexOf(sel);
+            if (idx < birthInputs.length - 1) $(birthInputs[idx + 1]).focus();
+          }
+          checkFormValid();
+        });
+      });
+
+      document.querySelectorAll('#intro-screen input').forEach(input => {
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && !drawBtn.disabled) startDraw();
+        });
+      });
+
+      drawBtn.addEventListener('click', startDraw);
+
+      function startDraw() {
+        currentName = nameInput.value.trim();
+        currentBirthday = getBirthday();
+        if (!currentName) return;
+        startDrawing(currentName, currentBirthday);
+      }
+
+      $('#share-btn').addEventListener('click', () => copyShareLink(currentName, currentBirthday));
+
+      $('#retry-btn').addEventListener('click', () => {
+        currentName = '';
+        currentBirthday = '';
+        nameInput.value = '';
+        birthInputs.forEach(sel => $(sel).value = '');
+        drawBtn.disabled = true;
+        showScreen('intro-screen');
+        nameInput.focus();
+      });
+
+      $('#shared-banner').addEventListener('click', () => {
+        window.history.replaceState({}, '', window.location.pathname);
+        currentName = '';
+        currentBirthday = '';
+        nameInput.value = '';
+        birthInputs.forEach(sel => $(sel).value = '');
+        drawBtn.disabled = true;
+        $('#shared-banner').style.display = 'none';
+        showScreen('intro-screen');
+        nameInput.focus();
+      });
+
+      const params = new URLSearchParams(window.location.search);
+      const sharedName = params.get('name');
+      const sharedBirth = params.get('birth') || '';
+      if (sharedName) {
+        currentName = sharedName;
+        currentBirthday = sharedBirth;
+        startDrawing(sharedName, sharedBirth);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
